@@ -1,0 +1,71 @@
+### Test API Produit Mutuel avec Devise
+
+# Créer une devise pour le test
+POST {{baseUrl}}/api/devise
+Content-Type: application/json
+
+{
+  "code": "EUR",
+  "nom": "Euro",
+  "tauxChange": 2700.50,
+  "statut": true
+}
+
+###
+
+# Créer un produit mutuel avec devise
+POST {{baseUrl}}/api/produitmutuel
+Content-Type: application/json
+
+{
+  "nom": "Produit Européen Premium",
+  "prixMensuel": 150.00,
+  "deviseId": 1,
+  "statut": true
+}
+
+###
+
+# Lister tous les produits mutuels (avec informations devise)
+GET {{baseUrl}}/api/produitmutuel
+
+###
+
+# Obtenir un produit mutuel spécifique
+GET {{baseUrl}}/api/produitmutuel/1
+
+###
+
+# Mettre à jour un produit mutuel avec devise
+PUT {{baseUrl}}/api/produitmutuel/1
+Content-Type: application/json
+
+{
+  "nom": "Produit Européen Premium Updated",
+  "prixMensuel": 175.00,
+  "deviseId": 1,
+  "statut": true
+}
+
+###
+
+# Lister les produits mutuels actifs
+GET {{baseUrl}}/api/produitmutuel/actives
+
+###
+
+# Supprimer un produit mutuel
+DELETE {{baseUrl}}/api/produitmutuel/1
+
+###
+
+# Test avec devise invalide (devrait retourner une erreur)
+POST {{baseUrl}}/api/produitmutuel
+Content-Type: application/json
+
+{
+  "nom": "Produit Test",
+  "prixMensuel": 100.00,
+  "deviseId": 999,
+  "statut": true
+}

@@ -1,0 +1,31 @@
+### Test API Adhesion GET complet avec toutes les informations associées
+
+# 1. Tester l'endpoint GET avec toutes les informations
+GET {{baseUrl}}/api/adhesion/1
+Content-Type: application/json
+
+###
+
+# 2. Tester avec un ID qui n'existe pas
+GET {{baseUrl}}/api/adhesion/999
+Content-Type: application/json
+
+###
+
+# 3. Comparer avec l'ancien endpoint (si disponible)
+# GET {{baseUrl}}/api/adhesion/1/affilie
+# Content-Type: application/json
+
+###
+
+# 4. Vérifier la structure de la réponse attendue
+# La réponse devrait contenir :
+# - Id, StatutDossier, DateCreation, etc. (infos adhésion)
+# - Affilie (complet avec toutes les informations)
+# - Souscriptions (liste avec prestations et collectes)
+# - Dependants (liste des dépendants)
+# - Collecte (la plus récente)
+# - TypeAdhesionLibelle (libellé du type d'adhésion)
+# - AgentNom (nom de l'agent créateur)
+
+###

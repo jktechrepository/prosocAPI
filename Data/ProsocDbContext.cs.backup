@@ -1,0 +1,473 @@
+using Microsoft.EntityFrameworkCore;
+using ProsocAPI.Models.Core;
+using ProsocAPI.Models.Authentication;
+using System.ComponentModel.DataAnnotations;
+
+namespace Prosoc.Data
+{
+    public class ProsocDbContext : DbContext
+    {
+        public ProsocDbContext(DbContextOptions<ProsocDbContext> options) : base(options)
+        {
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        // ✅ MODULE ADHÉRENT & ADHÉSION
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        public DbSet<TypeAdhesion> TypeAdhesions { get; set; }
+        public DbSet<Adhesion> Adhesions { get; set; }
+        public DbSet<Affilie> Affilies { get; set; }
+        public DbSet<Dependant> Dependants { get; set; }
+        public DbSet<Antecedant> Antecedants { get; set; }
+
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        // ✅ MODULE AGENT & WALLET
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        public DbSet<Agent> Agents { get; set; }
+        public DbSet<WalletAgent> WalletsAgents { get; set; }
+        public DbSet<WalletMouvement> WalletMouvements { get; set; }
+        public DbSet<RetraitAgent> RetraitsAgents { get; set; }
+        public DbSet<TargetAgent> TargetsAgents { get; set; }
+
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        // ✅ MODULE PRODUITS & PRESTATIONS
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        public DbSet<ProduitMutuel> ProduitsMutuels { get; set; }
+        public DbSet<ProduitAssureur> ProduitsAssureurs { get; set; }
+        public DbSet<Assureur> Assureurs { get; set; }
+        public DbSet<Prestation> Prestations { get; set; }
+        public DbSet<SouscriptionPrestation> SouscriptionsPrestations { get; set; }
+        public DbSet<BonEnvoi> BonsEnvoi { get; set; }
+
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        // ✅ MODULE GÉOGRAPHIQUE
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        public DbSet<Province> Provinces { get; set; }
+        public DbSet<Commune> Communes { get; set; }
+        public DbSet<ZoneSociale> ZonesSociales { get; set; }
+
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        // ✅ MODULE FINANCIER
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        public DbSet<Collecte> Collectes { get; set; }
+        public DbSet<Devise> Devises { get; set; }
+
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        // ✅ MODULE AUTHENTIFICATION & UTILISATEURS
+        // ═══════════════════════════════════════════════════════════════════════════════════
+        public DbSet<Utilisateur> Utilisateurs { get; set; }
+        public DbSet<Role> Roles { get; set; }
+        public DbSet<Permission> Permissions { get; set; }
+        public DbSet<UserRole> UserRoles { get; set; }
+        public DbSet<RolePermission> RolePermissions { get; set; }
+        public DbSet<UserPermission> UserPermissions { get; set; }
+        public DbSet<UserDevice> UserDevices { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // ═══════════════════════════════════════════════════════════════════════════════════
+            // ✅ CONFIGURATION DES RELATIONS ET CONTRAINTES
+            // ═══════════════════════════════════════════════════════════════════════════════════
+
+            // TypeAdhesion
+            modelBuilder.Entity<TypeAdhesion>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Libelle).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Montant).HasColumnType("decimal(18,2)");
+                entity.HasIndex(e => e.Libelle).IsUnique();
+            });
+
+            // Affilie
+            modelBuilder.Entity<Affilie>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CodeAdhesion).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Nom).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Prenom).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Telephone).HasMaxLength(20);
+                entity.HasIndex(e => e.CodeAdhesion).IsUnique();
+                entity.HasOne(e => e.Adhesion)
+                      .WithMany(e => e.Affilies)
+                      .HasForeignKey(e => e.AdhesionId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Dependant
+            modelBuilder.Entity<Dependant>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Nom).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.LienParente).HasMaxLength(50);
+                entity.HasOne(e => e.Affilie)
+                      .WithMany(e => e.Dependants)
+                      .HasForeignKey(e => e.AffilieId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Adhesion
+            modelBuilder.Entity<Adhesion>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.StatutDossier).IsRequired().HasMaxLength(20);
+                entity.HasOne(e => e.Type)
+                      .WithMany(e => e.Adhesions)
+                      .HasForeignKey(e => e.TypeAdhesionId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.AgentCreateur)
+                      .WithMany(e => e.AdhesionsCrees)
+                      .HasForeignKey(e => e.AgentId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Agent
+            modelBuilder.Entity<Agent>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CodeAT).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.NomComplet).IsRequired().HasMaxLength(200);
+                entity.HasIndex(e => e.CodeAT).IsUnique();
+                entity.HasOne(e => e.Zone)
+                      .WithMany(e => e.Agents)
+                      .HasForeignKey(e => e.ZoneSocialeId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // WalletAgent
+            modelBuilder.Entity<WalletAgent>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.SoldeCourant).HasColumnType("decimal(18,2)");
+                entity.HasOne(e => e.Agent)
+                      .WithOne(e => e.Wallet)
+                      .HasForeignKey<WalletAgent>(e => e.AgentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // WalletMouvement
+            modelBuilder.Entity<WalletMouvement>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Montant).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.TypeMouvement).IsRequired().HasMaxLength(20);
+                entity.HasOne(e => e.Wallet)
+                      .WithMany(e => e.Mouvements)
+                      .HasForeignKey(e => e.WalletId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // RetraitAgent
+            modelBuilder.Entity<RetraitAgent>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Montant).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.CodeRetraitPin).IsRequired().HasMaxLength(20);
+                entity.HasOne(e => e.Agent)
+                      .WithMany(e => e.Retraits)
+                      .HasForeignKey(e => e.AgentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ProduitBase configuration via TPH
+            modelBuilder.Entity<ProduitBase>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Nom).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.PrixMensuel).HasColumnType("decimal(18,2)");
+                entity.HasDiscriminator<string>("ProduitType")
+                      .HasValue<ProduitMutuel>("Mutuel")
+                      .HasValue<ProduitAssureur>("Assureur");
+            });
+
+            // ProduitAssureur
+            modelBuilder.Entity<ProduitAssureur>(entity =>
+            {
+                entity.Property(e => e.CommissionMutuelle).HasColumnType("decimal(18,2)");
+                entity.HasOne(e => e.Partenaire)
+                      .WithMany(e => e.Produits)
+                      .HasForeignKey(e => e.AssureurId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Assureur
+            modelBuilder.Entity<Assureur>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Nom).IsRequired().HasMaxLength(200);
+            });
+
+            // Prestation
+            modelBuilder.Entity<Prestation>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.NomPrestation).IsRequired().HasMaxLength(200);
+                entity.HasOne(e => e.ProduitMutuel)
+                      .WithMany()
+                      .HasForeignKey(e => e.ProduitMutuelId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ProduitAssureur)
+                      .WithMany()
+                      .HasForeignKey(e => e.ProduitAssureurId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // SouscriptionPrestation
+            modelBuilder.Entity<SouscriptionPrestation>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasOne(e => e.Affilie)
+                      .WithMany(e => e.Souscriptions)
+                      .HasForeignKey(e => e.AffilieId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Prestation)
+                      .WithMany(e => e.Souscriptions)
+                      .HasForeignKey(e => e.PrestationId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // BonEnvoi
+            modelBuilder.Entity<BonEnvoi>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.NumeroBon).IsRequired().HasMaxLength(50);
+                entity.HasIndex(e => e.NumeroBon).IsUnique();
+                entity.HasOne(e => e.Affilie)
+                      .WithMany(e => e.BonsEnvoi)
+                      .HasForeignKey(e => e.AffilieId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Prestation)
+                      .WithMany(e => e.BonsEnvoi)
+                      .HasForeignKey(e => e.PrestationId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Géographie
+            modelBuilder.Entity<Province>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Nom).IsRequired().HasMaxLength(200);
+            });
+
+            modelBuilder.Entity<Commune>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Nom).IsRequired().HasMaxLength(200);
+                entity.HasOne(e => e.Province)
+                      .WithMany(e => e.Communes)
+                      .HasForeignKey(e => e.ProvinceId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<ZoneSociale>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Nom).IsRequired().HasMaxLength(200);
+                entity.HasOne(e => e.Commune)
+                      .WithMany(e => e.Zones)
+                      .HasForeignKey(e => e.CommuneId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Financier
+            modelBuilder.Entity<Collecte>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Montant).HasColumnType("decimal(18,2)");
+                entity.HasOne(e => e.Affilie)
+                      .WithMany(e => e.Collectes)
+                      .HasForeignKey(e => e.AffilieId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Agent)
+                      .WithMany(e => e.Collectes)
+                      .HasForeignKey(e => e.AgentId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Devise)
+                      .WithMany(e => e.Collectes)
+                      .HasForeignKey(e => e.DeviseId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Devise>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Code).IsRequired().HasMaxLength(10);
+                entity.Property(e => e.Nom).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.TauxChange).HasColumnType("decimal(18,6)");
+                entity.HasIndex(e => e.Code).IsUnique();
+            });
+
+            modelBuilder.Entity<Antecedant>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Description).IsRequired().HasMaxLength(1000);
+                entity.HasOne(e => e.Affilie)
+                      .WithMany(e => e.Antecedants)
+                      .HasForeignKey(e => e.AffilieId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<TargetAgent>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.LibelleTarget).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.MontantTarget).HasColumnType("decimal(18,2)");
+                entity.HasOne(e => e.Agent)
+                      .WithMany(e => e.Targets)
+                      .HasForeignKey(e => e.AgentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ═══════════════════════════════════════════════════════════════════════════════════
+            // ✅ CONFIGURATION MULTI-RÔLES (RBAC)
+            // ═══════════════════════════════════════════════════════════════════════════════════
+
+            // UserRole (relation N-N Utilisateur-Role)
+            modelBuilder.Entity<UserRole>(entity =>
+            {
+                entity.HasKey(e => e.IdUserRole);
+                entity.Property(e => e.IsPrimary).HasDefaultValue(false);
+                entity.Property(e => e.Statut).HasDefaultValue(true);
+                entity.Property(e => e.DateAttribution).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                // Un utilisateur ne peut avoir qu'un seul rôle principal
+                entity.HasIndex(e => new { e.UtilisateurId, e.IsPrimary }).IsUnique()
+                      .HasFilter("IsPrimary = 1 AND Statut = 1");
+
+                entity.HasOne(e => e.Utilisateur)
+                      .WithMany(u => u.UserRoles)
+                      .HasForeignKey(e => e.UtilisateurId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Role)
+                      .WithMany(r => r.Utilisateurs)
+                      .HasForeignKey(e => e.RoleId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // RolePermission (relation N-N Role-Permission)
+            modelBuilder.Entity<RolePermission>(entity =>
+            {
+                entity.HasKey(e => e.IdRolePermission);
+                entity.Property(e => e.DateAttribution).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(e => e.Role)
+                      .WithMany(r => r.RolePermissions)
+                      .HasForeignKey(e => e.RoleId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Permission)
+                      .WithMany(p => p.RolePermissions)
+                      .HasForeignKey(e => e.PermissionId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // UserPermission (permissions personnalisées)
+            modelBuilder.Entity<UserPermission>(entity =>
+            {
+                entity.HasKey(e => e.IdUserPermission);
+                entity.Property(e => e.IsGranted).HasDefaultValue(true);
+                entity.Property(e => e.DateAttribution).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(e => e.Utilisateur)
+                      .WithMany(u => u.UserPermissions)
+                      .HasForeignKey(e => e.UtilisateurId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Permission)
+                      .WithMany(p => p.UserPermissions)
+                      .HasForeignKey(e => e.PermissionId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ═══════════════════════════════════════════════════════════════════════════════════
+            // ✅ CONFIGURATION AUTHENTIFICATION
+            // ═══════════════════════════════════════════════════════════════════════════════════
+
+            // RefreshToken
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.HasKey(e => e.IdRefreshToken);
+                entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(500);
+                entity.Property(e => e.DateCreation).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.HasIndex(e => e.TokenHash).IsUnique();
+
+                entity.HasOne(e => e.Utilisateur)
+                      .WithMany()
+                      .HasForeignKey(e => e.UtilisateurId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // UserDevice
+            modelBuilder.Entity<UserDevice>(entity =>
+            {
+                entity.HasKey(e => e.IdUserDevice);
+                entity.Property(e => e.FcmToken).IsRequired().HasMaxLength(500);
+                entity.Property(e => e.Statut).HasDefaultValue(true);
+                entity.Property(e => e.DateEnregistrement).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(e => e.Utilisateur)
+                      .WithMany()
+                      .HasForeignKey(e => e.UtilisateurId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // PasswordResetToken
+            modelBuilder.Entity<PasswordResetToken>(entity =>
+            {
+                entity.HasKey(e => e.IdPasswordResetToken);
+                entity.Property(e => e.Token).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.DateCreation).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.HasOne(e => e.Utilisateur)
+                      .WithMany(u => u.PasswordResetTokens)
+                      .HasForeignKey(e => e.UtilisateurId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Seed data de base
+            SeedData(modelBuilder);
+        }
+
+        private void SeedData(ModelBuilder modelBuilder)
+        {
+            // ═══════════════════════════════════════════════════════════════════════════════════
+            // ✅ SEED DATA DE BASE
+            // ═══════════════════════════════════════════════════════════════════════════════════
+
+            // Devises
+            modelBuilder.Entity<Devise>().HasData(
+                new Devise { Id = 1, Code = "CDF", Nom = "Franc Congolais", TauxChange = 1.0m, Statut = true },
+                new Devise { Id = 2, Code = "USD", Nom = "Dollar Américain", TauxChange = 2500.0m, Statut = true }
+            );
+
+            // TypeAdhesion
+            modelBuilder.Entity<TypeAdhesion>().HasData(
+                new TypeAdhesion { Id = 1, Libelle = "Solo", MaxDependants = 0, Description = "Adhésion individuelle sans dépendants", Montant = 5000m, Statut = true, DateCreation = DateTime.Now },
+                new TypeAdhesion { Id = 2, Libelle = "F3", MaxDependants = 3, Description = "Adhésion familiale jusqu'à 3 dépendants", Montant = 15000m, Statut = true, DateCreation = DateTime.Now },
+                new TypeAdhesion { Id = 3, Libelle = "F6", MaxDependants = 6, Description = "Adhésion familiale jusqu'à 6 dépendants", Montant = 25000m, Statut = true, DateCreation = DateTime.Now }
+            );
+
+            // Provinces (exemples)
+            modelBuilder.Entity<Province>().HasData(
+                new Province { Id = 1, Nom = "Kinshasa", Statut = true },
+                new Province { Id = 2, Nom = "Haut-Katanga", Statut = true },
+                new Province { Id = 3, Nom = "Lualaba", Statut = true },
+                new Province { Id = 4, Nom = "Kongo-Central", Statut = true }
+            );
+
+            // Rôles par défaut
+            modelBuilder.Entity<ProsocAPI.Models.Authentication.Role>().HasData(
+                new ProsocAPI.Models.Authentication.Role { IdRole = 1, Nom = "Super-Admin", Description = "Administrateur système avec tous les droits", Niveau = 1, Statut = true, DateCreation = DateTime.Now },
+                new ProsocAPI.Models.Authentication.Role { IdRole = 2, Nom = "Admin", Description = "Administrateur avec droits de gestion", Niveau = 2, Statut = true, DateCreation = DateTime.Now },
+                new ProsocAPI.Models.Authentication.Role { IdRole = 3, Nom = "Superviseur", Description = "Superviseur d'équipe", Niveau = 3, Statut = true, DateCreation = DateTime.Now },
+                new ProsocAPI.Models.Authentication.Role { IdRole = 4, Nom = "Agent (AT)", Description = "Agent de terrain", Niveau = 4, Statut = true, DateCreation = DateTime.Now },
+                new ProsocAPI.Models.Authentication.Role { IdRole = 5, Nom = "Agent (AA)", Description = "Agent administratif", Niveau = 5, Statut = true, DateCreation = DateTime.Now },
+                new ProsocAPI.Models.Authentication.Role { IdRole = 6, Nom = "Affilié", Description = "Membre affilié", Niveau = 10, Statut = true, DateCreation = DateTime.Now }
+            );
+        }
+    }
+}

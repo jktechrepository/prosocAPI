@@ -1,0 +1,109 @@
+### Test API Produit Assureur avec Devise
+
+# Créer une devise pour le test
+POST {{baseUrl}}/api/devise
+Content-Type: application/json
+
+{
+  "code": "USD",
+  "nom": "Dollar Américain",
+  "tauxChange": 2700.50,
+  "statut": true
+}
+
+###
+
+# Créer un assureur pour le test
+POST {{baseUrl}}/api/assureur
+Content-Type: application/json
+
+{
+  "nom": "Assureur International",
+  "description": "Compagnie d'assurance internationale",
+  "statut": true
+}
+
+###
+
+# Créer un produit assureur avec devise
+POST {{baseUrl}}/api/produitassureur
+Content-Type: application/json
+
+{
+  "nom": "Produit Assurance Premium",
+  "prixMensuel": 250.00,
+  "assureurId": 1,
+  "deviseId": 1,
+  "commissionMutuelle": 15.5,
+  "statut": true
+}
+
+###
+
+# Lister tous les produits assureurs (avec informations devise)
+GET {{baseUrl}}/api/produitassureur
+
+###
+
+# Obtenir un produit assureur spécifique
+GET {{baseUrl}}/api/produitassureur/1
+
+###
+
+# Lister les produits assureurs par assureur
+GET {{baseUrl}}/api/produitassureur/by-assureur/1
+
+###
+
+# Lister les produits assureurs actifs
+GET {{baseUrl}}/api/produitassureur/actives
+
+###
+
+# Mettre à jour un produit assureur avec devise
+PUT {{baseUrl}}/api/produitassureur/1
+Content-Type: application/json
+
+{
+  "nom": "Produit Assurance Premium Updated",
+  "prixMensuel": 275.00,
+  "assureurId": 1,
+  "deviseId": 1,
+  "commissionMutuelle": 18.0,
+  "statut": true
+}
+
+###
+
+# Supprimer un produit assureur
+DELETE {{baseUrl}}/api/produitassureur/1
+
+###
+
+# Test avec devise invalide (devrait retourner une erreur)
+POST {{baseUrl}}/api/produitassureur
+Content-Type: application/json
+
+{
+  "nom": "Produit Test",
+  "prixMensuel": 100.00,
+  "assureurId": 1,
+  "deviseId": 999,
+  "commissionMutuelle": 10.0,
+  "statut": true
+}
+
+###
+
+# Test avec assureur invalide (devrait retourner une erreur)
+POST {{baseUrl}}/api/produitassureur
+Content-Type: application/json
+
+{
+  "nom": "Produit Test",
+  "prixMensuel": 100.00,
+  "assureurId": 999,
+  "deviseId": 1,
+  "commissionMutuelle": 10.0,
+  "statut": true
+}

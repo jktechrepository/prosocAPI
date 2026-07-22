@@ -1,0 +1,945 @@
+using Microsoft.EntityFrameworkCore;
+using ProsocAPI.Models.Authentication;
+using ProsocAPI.Models.Core;
+
+namespace Prosoc.Data
+{
+    public class SeedData
+    {
+        public static async Task InitializeAsync(ProsocDbContext context, ILogger logger)
+        {
+            try
+            {
+                var seedDemo = string.Equals(Environment.GetEnvironmentVariable("SEED_DEMO"), "true", StringComparison.OrdinalIgnoreCase);
+
+                // S'assurer que la base de données est accessible
+                try
+                {
+                    await context.Database.CanConnectAsync();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Impossible de se connecter à la base de données");
+                    return;
+                }
+
+                // Forcer le seed pour le debug (temporaire - PAS DE VÉRIFICATION)
+                logger.LogInformation("Début du peuplement de la base de données...");
+                
+                // TEMPORAIRE : Désactiver la vérification pour forcer le seed
+                
+                // 1. Provinces (26 provinces de la RDC)
+                if (!await context.Provinces.AnyAsync())
+                {
+                    var provinces = new[]
+                    {
+                        new Province { Nom = "Kinshasa", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Bandundu", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Bas-Congo", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Bas-Uele", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Équateur", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Haut-Katanga", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Haut-Lomami", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Haut-Uele", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Ituri", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Kasaï", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Kasaï-Central", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Kasaï-Oriental", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Kongo Central", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Kwango", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Kwilu", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Lomami", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Lualaba", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Maniema", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Mongala", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Nord-Kivu", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Nord-Ubangi", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Sud-Kivu", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Sud-Ubangi", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Tshopo", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Tshuapa", Statut = true, DateCreation = DateTime.Now },
+                        new Province { Nom = "Tanganyika", Statut = true, DateCreation = DateTime.Now }
+                    };
+                    await context.Provinces.AddRangeAsync(provinces);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Provinces créées: {Count}", provinces.Length);
+                }
+
+                // 2. Devises
+                if (!await context.Devises.AnyAsync())
+                {
+                    var devises = new[]
+                    {
+                        new Devise { Code = "CDF", Nom = "Franc Congolais", TauxChange = 1.0m, Statut = true, DateCreation = DateTime.Now },
+                        new Devise { Code = "USD", Nom = "Dollar Américain", TauxChange = 2500.0m, Statut = true, DateCreation = DateTime.Now }
+                    };
+                    await context.Devises.AddRangeAsync(devises);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Devises créées: {Count}", devises.Length);
+                }
+
+                // 3. Catégories d'Adhésions
+                if (!await context.CategoriesAdhesions.AnyAsync())
+                {
+                    var categoriesAdhesions = new[]
+                    {
+                        new CategorieAdhesion { IdCategorieAdhesion = 1, Libelle = "Particulier", Description = "Adhésion Particulier", Statut = true, DateCreation = DateTime.Now },
+                        new CategorieAdhesion { IdCategorieAdhesion = 2, Libelle = "Entreprise", Description = "Adhésion Entreprise", Statut = true, DateCreation = DateTime.Now }
+                    };
+                    await context.CategoriesAdhesions.AddRangeAsync(categoriesAdhesions);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Catégories d'adhésions créées: {Count}", categoriesAdhesions.Length);
+                }
+
+                // 4. Types d'Adhésions
+                if (!await context.TypeAdhesions.AnyAsync())
+                {
+                    var typeAdhesions = new[]
+                    {
+                        new TypeAdhesion { IdTypeAdhesion = 1, Libelle = "Solo", CategorieAdhesionId = 1, MaxDependants = 0,   Description = "Adhésion individuelle sans dépendants", Montant = 1.5m, Statut = true, DateCreation = DateTime.Now },
+                        new TypeAdhesion { IdTypeAdhesion = 2, Libelle = "F3",   CategorieAdhesionId = 1, MaxDependants = 3,   Description = "Adhésion familiale jusqu'à 3 dépendants", Montant = 1.5m, Statut = true, DateCreation = DateTime.Now },
+                        new TypeAdhesion { IdTypeAdhesion = 3, Libelle = "F6",   CategorieAdhesionId = 1, MaxDependants = 6,   Description = "Adhésion familiale jusqu'à 6 dépendants", Montant = 1.5m, Statut = true, DateCreation = DateTime.Now },
+                        new TypeAdhesion { IdTypeAdhesion = 4, Libelle = "ET",   CategorieAdhesionId = 2, MaxDependants = 100, Description = "Adhésion Entreprise jusqu'à 100 Agents", Montant = 1.5m, Statut = true, DateCreation = DateTime.Now }
+                    };
+                    await context.TypeAdhesions.AddRangeAsync(typeAdhesions);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Types d'adhésions créés: {Count}", typeAdhesions.Length);
+                }
+
+                // 4. Catégories d'Agents
+                if (!await context.CategoriesAgents.AnyAsync())
+                {
+                    var categoriesAgents = new[]
+                    {
+                        new CategorieAgent { LibelleCategorie = "AT", Description = "Agent de Terrain",    Statut = true, DateCreation = DateTime.Now },
+                        new CategorieAgent { LibelleCategorie = "AA", Description = "Agent Administratif", Statut = true, DateCreation = DateTime.Now },
+                        new CategorieAgent { LibelleCategorie = "AP", Description = "Agent Percepteur",    Statut = true, DateCreation = DateTime.Now },
+                        new CategorieAgent { LibelleCategorie = "AS", Description = "Agent Superviseur",   Statut = true, DateCreation = DateTime.Now },
+                        new CategorieAgent { LibelleCategorie = "CA", Description = "Caissier",            Statut = true, DateCreation = DateTime.Now },
+                        new CategorieAgent { LibelleCategorie = "FI", Description = "Financier",           Statut = true, DateCreation = DateTime.Now },
+                        new CategorieAgent { LibelleCategorie = "IT", Description = "Technicien",          Statut = true, DateCreation = DateTime.Now },
+                        new CategorieAgent { LibelleCategorie = "AD", Description = "Admin",               Statut = true, DateCreation = DateTime.Now },
+                        new CategorieAgent { LibelleCategorie = "SP", Description = "Super Admin",         Statut = true, DateCreation = DateTime.Now }
+                    };
+                    await context.CategoriesAgents.AddRangeAsync(categoriesAgents);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Catégories d'agents créées: {Count}", categoriesAgents.Length);
+                }
+
+                // 6. Communes (24 communes de Kinshasa)
+                var kinshasaProvince = await context.Provinces.FirstOrDefaultAsync(p => p.Nom == "Kinshasa");
+                if (kinshasaProvince != null && !await context.Communes.AnyAsync())
+                {
+                    var communes = new[]
+                    {
+                        new Commune { Nom = "Gombe", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Lemba", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Matete", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Kalamu", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Kasa-Vubu", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Kintambo", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Kimbanseke", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Kinshasa", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Lingwala", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Limete", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Mont-Ngafula", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Ngaba", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Ngaliema", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Nsele", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Pikine", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Selembao", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Bandalungwa", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Barumbu", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Bumbu", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Kinkole", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Kisenso", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Kokolo", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Makala", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now },
+                        new Commune { Nom = "Masina", ProvinceId = kinshasaProvince.Id, Statut = true, DateCreation = DateTime.Now }
+                    };
+                    await context.Communes.AddRangeAsync(communes);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Communes créées: {Count}", communes.Length);
+                }
+
+                // 7. Zones Sociales (après les communes)
+                var gombeCommune = await context.Communes.FirstOrDefaultAsync(c => c.Nom == "Gombe");
+                if (gombeCommune != null && !await context.ZonesSociales.AnyAsync())
+                {
+                    var zonesSociales = new[]
+                    {
+                        new ZoneSociale { Nom = "Gombe-Centre", CommuneId = gombeCommune.Id, Statut = true, DateCreation = DateTime.Now },
+                        new ZoneSociale { Nom = "Gombe-Nord",   CommuneId = gombeCommune.Id, Statut = true, DateCreation = DateTime.Now },
+                        new ZoneSociale { Nom = "Gombe-Sud",    CommuneId = gombeCommune.Id, Statut = true, DateCreation = DateTime.Now }
+                    };
+                    await context.ZonesSociales.AddRangeAsync(zonesSociales);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Zones sociales créées: {Count}", zonesSociales.Length);
+                }
+
+                // 8. Permissions
+                if (!await context.Permissions.AnyAsync())
+                {
+                    var permissions = new[]
+                    {
+                        // Permissions Utilisateur
+                        new Permission { Nom = "CREATE_USER", Description = "Créer un utilisateur",     DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_USER",   Description = "Voir les utilisateurs",    DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_USER", Description = "Modifier un utilisateur",  DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_USER", Description = "Supprimer un utilisateur", DateCreation = DateTime.Now },
+                        
+                        // Permissions Agent
+                        new Permission { Nom = "CREATE_AGENT", Description = "Créer un agent",     DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_AGENT",   Description = "Voir les agents",    DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_AGENT", Description = "Modifier un agent",  DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_AGENT", Description = "Supprimer un agent", DateCreation = DateTime.Now },
+                        
+                        // Permissions Adhesion
+                        new Permission { Nom = "CREATE_ADHESION", Description = "Créer une adhésion", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_ADHESION", Description = "Voir les adhésions",      DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_ADHESION", Description = "Modifier une adhésion", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_ADHESION", Description = "Supprimer une adhésion", DateCreation = DateTime.Now },
+                        
+                        // Permissions WalletAgent
+                        new Permission { Nom = "CREATE_WALLET_AGENT", Description = "Créer un wallet agent", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_WALLET_AGENT", Description = "Voir les wallets agents", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_WALLET_AGENT", Description = "Modifier un wallet agent", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_WALLET_AGENT", Description = "Supprimer un wallet agent", DateCreation = DateTime.Now },
+                        
+                        // Permissions WalletVirtuelAgent
+                        new Permission { Nom = "CREATE_WALLET_VIRTUEL", Description = "Créer un wallet virtuel", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_WALLET_VIRTUEL", Description = "Voir les wallets virtuels", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_WALLET_VIRTUEL", Description = "Modifier un wallet virtuel", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_WALLET_VIRTUEL", Description = "Supprimer un wallet virtuel", DateCreation = DateTime.Now },
+                        
+                        // Permissions WalletMouvement
+                        new Permission { Nom = "CREATE_WALLET_MOVEMENT", Description = "Créer un mouvement de wallet", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_WALLET_MOVEMENT", Description = "Voir les mouvements de wallet", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_WALLET_MOVEMENT", Description = "Modifier un mouvement de wallet", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_WALLET_MOVEMENT", Description = "Supprimer un mouvement de wallet", DateCreation = DateTime.Now },
+                        
+                        // Permissions Transaction
+                        new Permission { Nom = "CREATE_TRANSACTION", Description = "Effectuer une transaction", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_TRANSACTION", Description = "Voir les transactions", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_TRANSACTION", Description = "Modifier une transaction", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_TRANSACTION", Description = "Supprimer une transaction", DateCreation = DateTime.Now },
+                        
+                        // Permissions ProduitAssureur
+                        new Permission { Nom = "CREATE_PRODUIT_ASSUREUR", Description = "Créer un produit assureur", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_PRODUIT_ASSUREUR", Description = "Voir les produits assureurs", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_PRODUIT_ASSUREUR", Description = "Modifier un produit assureur", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_PRODUIT_ASSUREUR", Description = "Supprimer un produit assureur", DateCreation = DateTime.Now },
+                        
+                        // Permissions ProduitMutuel
+                        new Permission { Nom = "CREATE_PRODUIT_MUTUEL", Description = "Créer un produit mutuel", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_PRODUIT_MUTUEL", Description = "Voir les produits mutuels", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_PRODUIT_MUTUEL", Description = "Modifier un produit mutuel", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_PRODUIT_MUTUEL", Description = "Supprimer un produit mutuel", DateCreation = DateTime.Now },
+                        
+                        // Permissions Prestation
+                        new Permission { Nom = "CREATE_PRESTATION", Description = "Créer une prestation", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_PRESTATION", Description = "Voir les prestations", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_PRESTATION", Description = "Modifier une prestation", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_PRESTATION", Description = "Supprimer une prestation", DateCreation = DateTime.Now },
+                        
+                        // Permissions Collecte
+                        new Permission { Nom = "CREATE_COLLECTE", Description = "Créer une collecte", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_COLLECTE", Description = "Voir les collectes", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_COLLECTE", Description = "Modifier une collecte", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_COLLECTE", Description = "Supprimer une collecte", DateCreation = DateTime.Now },
+                        
+                        // Permissions Affilie
+                        new Permission { Nom = "CREATE_AFFILIE", Description = "Créer un affilié", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_AFFILIE", Description = "Voir les affiliés", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_AFFILIE", Description = "Modifier un affilié", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_AFFILIE", Description = "Supprimer un affilié", DateCreation = DateTime.Now },
+                        
+                        // Permissions Géographiques
+                        new Permission { Nom = "CREATE_PROVINCE", Description = "Créer une province", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_PROVINCE", Description = "Voir les provinces", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_PROVINCE", Description = "Modifier une province", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_PROVINCE", Description = "Supprimer une province", DateCreation = DateTime.Now },
+                        
+                        new Permission { Nom = "CREATE_COMMUNE", Description = "Créer une commune", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_COMMUNE", Description = "Voir les communes", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_COMMUNE", Description = "Modifier une commune", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_COMMUNE", Description = "Supprimer une commune", DateCreation = DateTime.Now },
+                        
+                        new Permission { Nom = "CREATE_ZONE_SOCIALE", Description = "Créer une zone sociale", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_ZONE_SOCIALE", Description = "Voir les zones sociales", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_ZONE_SOCIALE", Description = "Modifier une zone sociale", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_ZONE_SOCIALE", Description = "Supprimer une zone sociale", DateCreation = DateTime.Now },
+                        
+                        new Permission { Nom = "CREATE_DEVISE", Description = "Créer une devise", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_DEVISE", Description = "Voir les devises", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_DEVISE", Description = "Modifier une devise", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_DEVISE", Description = "Supprimer une devise", DateCreation = DateTime.Now },
+                        
+                        new Permission { Nom = "CREATE_CATEGORIE_ADHESION", Description = "Créer une catégorie d'adhésion", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_CATEGORIE_ADHESION", Description = "Voir les catégories d'adhésion", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_CATEGORIE_ADHESION", Description = "Modifier une catégorie d'adhésion", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_CATEGORIE_ADHESION", Description = "Supprimer une catégorie d'adhésion", DateCreation = DateTime.Now },
+                        
+                        new Permission { Nom = "CREATE_TYPE_ADHESION", Description = "Créer un type d'adhésion", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_TYPE_ADHESION", Description = "Voir les types d'adhésion", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_TYPE_ADHESION", Description = "Modifier un type d'adhésion", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_TYPE_ADHESION", Description = "Supprimer un type d'adhésion", DateCreation = DateTime.Now },
+                        
+                        new Permission { Nom = "CREATE_CATEGORIE_AGENT", Description = "Créer une catégorie d'agent", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_CATEGORIE_AGENT", Description = "Voir les catégories d'agents", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_CATEGORIE_AGENT", Description = "Modifier une catégorie d'agent", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_CATEGORIE_AGENT", Description = "Supprimer une catégorie d'agent", DateCreation = DateTime.Now },
+                        
+                        // Permissions Supervision
+                        new Permission { Nom = "READ_HIERARCHIE", Description = "Voir la hiérarchie des agents", DateCreation = DateTime.Now },
+                        new Permission { Nom = "MANAGE_SUPERVISION", Description = "Gérer la supervision d'équipe", DateCreation = DateTime.Now },
+                        new Permission { Nom = "ACCESS_DASHBOARD_SUPERVISEUR", Description = "Accéder au dashboard superviseur", DateCreation = DateTime.Now },
+                        new Permission { Nom = "MANAGE_OBJECTIFS", Description = "Gérer les objectifs d'équipe", DateCreation = DateTime.Now },
+                        new Permission { Nom = "VALIDATE_PERFORMANCE", Description = "Valider les performances des agents", DateCreation = DateTime.Now },
+                        
+                        // Permissions Dashboard et Rapports
+                        new Permission { Nom = "ACCESS_DASHBOARD_AGENT", Description = "Accéder au dashboard agent", DateCreation = DateTime.Now },
+                        new Permission { Nom = "ACCESS_DASHBOARD_ADMIN", Description = "Accéder au dashboard administrateur", DateCreation = DateTime.Now },
+                        new Permission { Nom = "GENERATE_RAPPORT", Description = "Générer des rapports", DateCreation = DateTime.Now },
+                        new Permission { Nom = "EXPORT_DATA", Description = "Exporter des données", DateCreation = DateTime.Now },
+                        
+                        // Permissions Notifications
+                        new Permission { Nom = "CREATE_NOTIFICATION", Description = "Créer une notification", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_NOTIFICATION", Description = "Voir les notifications", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_NOTIFICATION", Description = "Modifier une notification", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_NOTIFICATION", Description = "Supprimer une notification", DateCreation = DateTime.Now },
+                        
+                        // Permissions Bon d'envoi
+                        new Permission { Nom = "CREATE_BON_ENVOI", Description = "Créer un bon d'envoi", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_BON_ENVOI", Description = "Voir les bons d'envoi", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_BON_ENVOI", Description = "Modifier un bon d'envoi", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_BON_ENVOI", Description = "Supprimer un bon d'envoi", DateCreation = DateTime.Now },
+                        
+                        // Permissions Frais
+                        new Permission { Nom = "CREATE_FRAIS", Description = "Créer un FRAIS", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_FRAIS",   Description = "Voir les FRAIS", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_FRAIS", Description = "Modifier un FRAIS", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_FRAIS", Description = "Supprimer un FRAIS", DateCreation = DateTime.Now },
+                        
+                        // Permissions Système
+                        new Permission { Nom = "MANAGE_SYSTEM", Description = "Gérer les paramètres système", DateCreation = DateTime.Now },
+                        new Permission { Nom = "VIEW_LOGS", Description = "Voir les logs système", DateCreation = DateTime.Now },
+                        new Permission { Nom = "MANAGE_BACKUP", Description = "Gérer les sauvegardes", DateCreation = DateTime.Now }
+                    };
+                    await context.Permissions.AddRangeAsync(permissions);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Permissions créées: {Count}", permissions.Length);
+                }
+
+                // 9. Rôles
+                if (!await context.Roles.AnyAsync())
+                {
+                    var roles = new[]
+                    {
+                        new Role { Nom = "SuperAdmin",                 Code="SA",   Description = "Super administrateur",         Niveau = 0, Statut = true, DateCreation = DateTime.Now },
+                        new Role { Nom = "Admin",                      Code="AD",   Description = "Administrateur système",       Niveau = 1, Statut = true, DateCreation = DateTime.Now },
+                        new Role { Nom = "IT",                         Code="IT",   Description = "Technicien",                   Niveau = 2, Statut = true, DateCreation = DateTime.Now },
+                        new Role { Nom = "Financier",                  Code="FI",   Description = "Financier",                    Niveau = 3, Statut = true, DateCreation = DateTime.Now },
+                        new Role { Nom = "Caissier",                   Code="CA",   Description = "Superviseur d'équipe",         Niveau = 4, Statut = true, DateCreation = DateTime.Now },
+                        new Role { Nom = "Superviseur",                Code="SP",   Description = "Superviseur d'équipe",         Niveau = 5, Statut = true, DateCreation = DateTime.Now },
+                        new Role { Nom = "Percepteur",                 Code="PR",   Description =  "Superviseur d'équipe",        Niveau = 6, Statut = true, DateCreation = DateTime.Now },
+                        new Role { Nom = "Agent (AT)",                 Code="AT",   Description = "Agent de Terrain",             Niveau = 7, Statut = true, DateCreation = DateTime.Now },
+                        new Role { Nom = "Agent (AA)",                 Code="AA",   Description = "Agent Administratif",          Niveau = 8, Statut = true, DateCreation = DateTime.Now },
+                        new Role { Nom = "Affilié",                    Code="AF",   Description = "Membre affilié",               Niveau = 9, Statut = true, DateCreation = DateTime.Now }
+
+                    };
+                    await context.Roles.AddRangeAsync(roles);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Rôles créés: {Count}", roles.Length);
+                }
+                
+                // 10. Frais
+                if (!await context.Frais.AnyAsync())
+                {
+                    var frais = new[]
+                    {
+                        new Frais { Libelle = "Frais Adhesion",                Montant= 1.5,   DeviseId = 2,          Statut = true, DateCreation = DateTime.Now },
+                        new Frais { Libelle = "Achat Carte de Membre",         Montant= 5,     DeviseId = 2,          Statut = true, DateCreation = DateTime.Now }
+                         
+                    };
+                    await context.Frais.AddRangeAsync(frais);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Frais créés: {Count}", frais.Length);
+                }
+
+                // 10. Création des Agents (AVANT les utilisateurs)
+                if (!await context.Agents.AnyAsync())
+                {
+                    var categorieSystem = await context.CategoriesAgents.FirstOrDefaultAsync(c => c.LibelleCategorie == "AD");
+                    var gombeCentre = await context.ZonesSociales.FirstOrDefaultAsync(z => z.Nom == "Gombe-Centre");
+                    var gombeNord = await context.ZonesSociales.FirstOrDefaultAsync(z => z.Nom == "Gombe-Nord");
+
+                    // Créer d'abord les agents pour Admin et SuperAdmin
+                    var adminSystemAgent = new Agent
+                    {
+                        NomComplet = "Admin Système",
+                        Phone = "+243999999999",
+                        EmailAgent = "admin@prosoc.cd",
+                        Statut = true,
+                        DateCreation = DateTime.Now,
+                        CategorieAgentId = categorieSystem?.IdCategorieAgent ?? 1,
+                        ZoneSocialeId = gombeCentre?.IdZoneSociale ?? 1,
+                        Matricule = "ADMIN001"
+                    };
+
+                    var superAdminSystemAgent = new Agent
+                    {
+                        NomComplet = "Super Admin Système",
+                        Phone = "+243888888888",
+                        EmailAgent = "superadmin@prosoc.cd",
+                        Statut = true,
+                        DateCreation = DateTime.Now,
+                        CategorieAgentId = categorieSystem?.IdCategorieAgent ?? 1,
+                        ZoneSocialeId = gombeNord?.IdZoneSociale ?? 2,
+                        Matricule = "SUPER001"
+                    };
+                    
+                    // Création des agents de terrain AT 
+                    var agentAt1 = new Agent
+                    {
+                        NomComplet = "Obed Kangudja",
+                        Phone = "+243825099299",
+                        EmailAgent = "odedkangudja66@gmail.com",
+                        Statut = true,
+                        DateCreation = DateTime.Now,
+                        CategorieAgentId = categorieSystem?.IdCategorieAgent ?? 1,
+                        ZoneSocialeId = gombeCentre?.IdZoneSociale ?? 1,
+                        Matricule = "AT-001"
+                    };
+                    
+                    var agentAt2 = new Agent
+                    {
+                        NomComplet = "Garry Kabeya",
+                        Phone = "+243850986864",
+                        EmailAgent = "garrykabeya294@gmail.com",
+                        Statut = true,
+                        DateCreation = DateTime.Now,
+                        CategorieAgentId = categorieSystem?.IdCategorieAgent ?? 1,
+                        ZoneSocialeId = gombeCentre?.IdZoneSociale ?? 1,
+                        Matricule = "AT-002"
+                    };
+
+                    var agents = new[]
+                    {
+                        adminSystemAgent,
+                        superAdminSystemAgent,
+                        agentAt1,
+                        agentAt2
+                    };
+
+                    await context.Agents.AddRangeAsync(agents);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Agents créés: {Count}", agents.Length);
+                }
+
+                // 11. Utilisateurs (après les agents)
+                var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.Nom == "Admin");
+                var superAdminRole = await context.Roles.FirstOrDefaultAsync(r => r.Nom == "SuperAdmin");
+                var agentAtRole = await context.Roles.FirstOrDefaultAsync(r => r.Nom == "Agent (AT)");
+                
+                if (adminRole != null && superAdminRole != null && agentAtRole != null && !await context.Utilisateurs.AnyAsync())
+                {
+                    var adminSystemAgent = await context.Agents.FirstOrDefaultAsync(a => a.Matricule == "ADMIN001" || a.EmailAgent == "admin@prosoc.cd");
+                    var superAdminSystemAgent = await context.Agents.FirstOrDefaultAsync(a => a.Matricule == "SUPER001" || a.EmailAgent == "superadmin@prosoc.cd");
+                    var atSystemAgent1 = await context.Agents.FirstOrDefaultAsync(a => a.Matricule == "AT-001" || a.EmailAgent == "odedkangudja66@gmail.com");
+                    var atSystemAgent2 = await context.Agents.FirstOrDefaultAsync(a => a.Matricule == "AT-002" || a.EmailAgent == "garrykabeya294@gmail.com");
+                    
+                    
+                    if (adminSystemAgent == null || superAdminSystemAgent == null || atSystemAgent1 == null || atSystemAgent2 == null)
+                    {
+                        logger.LogWarning("Agents système non trouvés; la création des utilisateurs système sera gérée par l'upsert.");
+                        adminSystemAgent = adminSystemAgent ?? new Agent { IdAgent = 0 };
+                        superAdminSystemAgent = superAdminSystemAgent ?? new Agent { IdAgent = 0 };
+                        atSystemAgent1 = atSystemAgent1 ?? new Agent { IdAgent = 0 };
+                        atSystemAgent2 = atSystemAgent2 ?? new Agent { IdAgent = 0 };
+                    }
+
+                    var users = new List<Utilisateur>
+                    {
+                        // Utilisateurs Admin/SuperAdmin liés à leurs agents
+                        new Utilisateur
+                        {
+                            NomUtilisateur = "admin",
+                            EmailUtilisateur = "admin@prosoc.cd",
+                            DefaultUsername = "admin",
+                            PhoneUtilisateur = "+243999999999",
+                            MotDePasseHash = BCrypt.Net.BCrypt.HashPassword("Admin"),
+                            Statut = true,
+                            RoleId = adminRole.IdRole,
+                            AgentId = adminSystemAgent.IdAgent == 0 ? null : adminSystemAgent.IdAgent,
+                            DateCreation = DateTime.Now,
+                            DoitChangerMotDePasse = false
+                        },
+                        new Utilisateur
+                        {
+                            NomUtilisateur = "superadmin",
+                            EmailUtilisateur = "superadmin@prosoc.cd",
+                            PhoneUtilisateur = "+243888888888",
+                            DefaultUsername = "superadmin",
+                            MotDePasseHash = BCrypt.Net.BCrypt.HashPassword("Super-Admin"),
+                            Statut = true,
+                            RoleId = superAdminRole.IdRole,
+                            AgentId = superAdminSystemAgent.IdAgent == 0 ? null : superAdminSystemAgent.IdAgent,
+                            DateCreation = DateTime.Now,
+                            DoitChangerMotDePasse = false
+                        },  
+                        // Utilisateurs AT liés à leurs agents
+                        new Utilisateur
+                        {
+                            NomUtilisateur = "Obed Kangudja",
+                            EmailUtilisateur = "odedkangudja66@gmail.com",
+                            DefaultUsername = "AT-001",
+                            PhoneUtilisateur = "+243999999999",
+                            MotDePasseHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                            Statut = true,
+                            RoleId = agentAtRole.IdRole,
+                            AgentId = atSystemAgent1.IdAgent == 0 ? null : atSystemAgent1.IdAgent,
+                            DateCreation = DateTime.Now,
+                            DoitChangerMotDePasse = false
+                        },
+                        new Utilisateur
+                        {
+                            NomUtilisateur = "Obed Kangudja",
+                            EmailUtilisateur = "garrykabeya294@gmail.com",
+                            DefaultUsername = "AT-002",
+                            PhoneUtilisateur = "+243850986864",
+                            MotDePasseHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                            Statut = true,
+                            RoleId = agentAtRole.IdRole,
+                            AgentId = atSystemAgent2.IdAgent == 0 ? null : atSystemAgent2.IdAgent,
+                            DateCreation = DateTime.Now,
+                            DoitChangerMotDePasse = false
+                        }
+                    };
+
+                    // Ajouter les utilisateurs pour chaque agent (sauf Admin/SuperAdmin déjà créés)
+                    
+                    await context.Utilisateurs.AddRangeAsync(users);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Utilisateurs créés: {Count}", users.Count);
+                }
+
+                // 11.b Upsert des comptes système (Admin / SuperAdmin)
+                // Permet de garantir la présence de ces comptes même si la base contient déjà d'autres utilisateurs.
+                if (adminRole != null)
+                {
+                    var adminAgent = await context.Agents.FirstOrDefaultAsync(a => a.Matricule == "ADMIN001" || a.EmailAgent == "admin@prosoc.cd");
+                    if (adminAgent == null)
+                    {
+                        var categorieForSystem = await context.CategoriesAgents.FirstOrDefaultAsync();
+                        var zoneForAdmin = await context.ZonesSociales.FirstOrDefaultAsync();
+
+                        adminAgent = new Agent
+                        {
+                            NomComplet = "Admin Système",
+                            Phone = "+243999999999",
+                            EmailAgent = "admin@prosoc.cd",
+                            Statut = true,
+                            DateCreation = DateTime.Now,
+                            CategorieAgentId = categorieForSystem?.IdCategorieAgent,
+                            ZoneSocialeId = zoneForAdmin.IdZoneSociale,
+                            Matricule = "ADMIN001"
+                        };
+
+                        await context.Agents.AddAsync(adminAgent);
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("Agent système ADMIN001 créé (upsert)");
+                    }
+
+                    var adminCandidates = await context.Utilisateurs
+                        .Where(u => u.EmailUtilisateur == "admin@prosoc.cd" || u.NomUtilisateur == "admin@prosoc.cd")
+                        .ToListAsync();
+
+                    var adminSystemUser = adminCandidates
+                        .FirstOrDefault(u => u.EmailUtilisateur == "admin@prosoc.cd")
+                        ?? adminCandidates.FirstOrDefault();
+
+                    if (adminSystemUser == null)
+                    {
+                        adminSystemUser = new Utilisateur
+                        {
+                            NomUtilisateur = "admin",
+                            EmailUtilisateur = "admin@prosoc.cd",
+                            PhoneUtilisateur = "+243999999999",
+                            DefaultUsername = "admin",
+                            MotDePasseHash = BCrypt.Net.BCrypt.HashPassword("Admin"),
+                            Statut = true,
+                            RoleId = adminRole.IdRole,
+                            AgentId = adminAgent.IdAgent,
+                            DateCreation = DateTime.Now,
+                            DoitChangerMotDePasse = false
+                        };
+
+                        await context.Utilisateurs.AddAsync(adminSystemUser);
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("Compte admin@prosoc.cd créé (upsert)");
+                    }
+                    else
+                    {
+                        adminSystemUser.NomUtilisateur = "admin";
+                        adminSystemUser.EmailUtilisateur = "admin@prosoc.cd";
+                        adminSystemUser.PhoneUtilisateur = "+243999999999";
+
+                        foreach (var other in adminCandidates.Where(u => u.IdUtilisateur != adminSystemUser.IdUtilisateur))
+                        {
+                            if (other.EmailUtilisateur == "admin@prosoc.cd")
+                                other.EmailUtilisateur = null;
+                        }
+
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("Compte admin@prosoc.cd mis à jour (upsert)");
+                    }
+                }
+
+                if (superAdminRole != null)
+                {
+                    var superAdminAgent = await context.Agents.FirstOrDefaultAsync(a => a.Matricule == "SUPER001" || a.EmailAgent == "superadmin@prosoc.cd");
+                    if (superAdminAgent == null)
+                    {
+                        var categorieForSystem = await context.CategoriesAgents.FirstOrDefaultAsync();
+                        var zoneForSuperAdmin = await context.ZonesSociales.FirstOrDefaultAsync();
+
+                        superAdminAgent = new Agent
+                        {
+                            NomComplet = "Super Admin Système",
+                            Phone = "+243888888888",
+                            EmailAgent = "superadmin@prosoc.cd",
+                            Statut = true,
+                            DateCreation = DateTime.Now,
+                            CategorieAgentId = categorieForSystem?.IdCategorieAgent,
+                            ZoneSocialeId = zoneForSuperAdmin.IdZoneSociale,
+                            Matricule = "SUPER001"
+                        };
+
+                        await context.Agents.AddAsync(superAdminAgent);
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("Agent système SUPER001 créé (upsert)");
+                    }
+
+                    var superAdminCandidates = await context.Utilisateurs
+                        .Where(u => u.EmailUtilisateur == "superadmin@prosoc.cd" || u.NomUtilisateur == "superadmin@prosoc.cd")
+                        .ToListAsync();
+
+                    var superAdminSystemUser = superAdminCandidates
+                        .FirstOrDefault(u => u.EmailUtilisateur == "superadmin@prosoc.cd")
+                        ?? superAdminCandidates.FirstOrDefault();
+
+                    if (superAdminSystemUser == null)
+                    {
+                        superAdminSystemUser = new Utilisateur
+                        {
+                            NomUtilisateur = "superadmin",
+                            EmailUtilisateur = "superadmin@prosoc.cd",
+                            PhoneUtilisateur = "+243888888888",
+                            DefaultUsername = "superadmin",
+                            MotDePasseHash = BCrypt.Net.BCrypt.HashPassword("Super-Admin"),
+                            Statut = true,
+                            RoleId = superAdminRole.IdRole,
+                            AgentId = superAdminAgent.IdAgent,
+                            DateCreation = DateTime.Now,
+                            DoitChangerMotDePasse = false
+                        };
+
+                        await context.Utilisateurs.AddAsync(superAdminSystemUser);
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("Compte superadmin@prosoc.cd créé (upsert)");
+                    }
+                    else
+                    {
+                        superAdminSystemUser.NomUtilisateur = "superadmin";
+                        superAdminSystemUser.EmailUtilisateur = "superadmin@prosoc.cd";
+                        superAdminSystemUser.PhoneUtilisateur = "+243888888888";
+
+                        foreach (var other in superAdminCandidates.Where(u => u.IdUtilisateur != superAdminSystemUser.IdUtilisateur))
+                        {
+                            if (other.EmailUtilisateur == "superadmin@prosoc.cd")
+                                other.EmailUtilisateur = null;
+                        }
+
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("Compte superadmin@prosoc.cd mis à jour (upsert)");
+                    }
+                }
+
+                // 12. Attribution des permissions aux rôles
+                var allPermissions = await context.Permissions.ToListAsync();
+                var allRoles = await context.Roles.ToListAsync();
+
+                if (!await context.RolePermissions.AnyAsync())
+                {
+                    var rolePermissions = new List<RolePermission>();
+
+                    foreach (var role in allRoles)
+                    {
+                        // Admin et SuperAdmin ont toutes les permissions
+                        if (role.Nom == "Admin" || role.Nom == "SuperAdmin")
+                        {
+                            foreach (var permission in allPermissions)
+                            {
+                                rolePermissions.Add(new RolePermission
+                                {
+                                    RoleId = role.IdRole,
+                                    PermissionId = permission.IdPermission,
+                                    DateAttribution = DateTime.Now
+                                });
+                            }
+                        }
+                        // Manager a permissions de gestion complètes y compris supervision
+                        else if (role.Nom == "IT")
+                        {
+                            var managerPermissions = allPermissions.Where(p => 
+                                !p.Nom.Contains("DELETE_") && 
+                                !p.Nom.Contains("DELETE_USER") &&
+                                !p.Nom.Contains("MANAGE_SYSTEM") &&
+                                (p.Nom.Contains("READ_") || 
+                                 p.Nom.Contains("CREATE_") ||
+                                 p.Nom.Contains("UPDATE_") ||
+                                 p.Nom.Contains("COLLECTE") ||
+                                 p.Nom.Contains("AFFILIE") ||
+                                 p.Nom.Contains("ADHESION") ||
+                                 p.Nom.Contains("WALLET_") ||
+                                 p.Nom.Contains("PRESTATION") ||
+                                 p.Nom.Contains("PRODUIT_") ||
+                                 p.Nom.Contains("HIERARCHIE") ||
+                                 p.Nom.Contains("SUPERVISION") ||
+                                 p.Nom.Contains("OBJECTIF") ||
+                                 p.Nom.Contains("DASHBOARD") ||
+                                 p.Nom.Contains("RAPPORT") ||
+                                 p.Nom.Contains("EXPORT") ||
+                                 p.Nom.Contains("NOTIFICATION") ||
+                                 p.Nom.Contains("BON_ENVOI") ||
+                                 p.Nom.Contains("ZONE_SOCIALE") ||
+                                 p.Nom.Contains("COMMUNE") ||
+                                 p.Nom.Contains("PROVINCE") ||
+                                 p.Nom.Contains("DEVISE") ||
+                                 p.Nom.Contains("CATEGORIE_"))).ToList();
+                            
+                            foreach (var permission in managerPermissions)
+                            {
+                                rolePermissions.Add(new RolePermission
+                                {
+                                    RoleId = role.IdRole,
+                                    PermissionId = permission.IdPermission,
+                                    DateAttribution = DateTime.Now
+                                });
+                            }
+                        }
+                        // Superviseur peut lire et modifier les données opérationnelles et gérer la supervision
+                        else if (role.Nom == "Superviseur")
+                        {
+                            var supervisorPermissions = allPermissions.Where(p => 
+                                p.Nom.Contains("READ_") || 
+                                p.Nom.Contains("CREATE_") ||
+                                p.Nom.Contains("UPDATE_") ||
+                                p.Nom == "CREATE_TRANSACTION" ||
+                                p.Nom == "READ_TRANSACTION" ||
+                                p.Nom.Contains("COLLECTE") ||
+                                p.Nom.Contains("AFFILIE") ||
+                                p.Nom.Contains("ADHESION") ||
+                                p.Nom.Contains("WALLET_") ||
+                                p.Nom.Contains("PRESTATION") ||
+                                p.Nom.Contains("PRODUIT_") ||
+                                p.Nom.Contains("HIERARCHIE") ||
+                                p.Nom.Contains("SUPERVISION") ||
+                                p.Nom.Contains("OBJECTIF") ||
+                                p.Nom.Contains("DASHBOARD") ||
+                                p.Nom.Contains("RAPPORT") ||
+                                p.Nom.Contains("EXPORT") ||
+                                p.Nom.Contains("NOTIFICATION") ||
+                                p.Nom.Contains("BON_ENVOI") ||
+                                p.Nom.Contains("ZONE_SOCIALE") ||
+                                p.Nom.Contains("COMMUNE") ||
+                                p.Nom.Contains("PROVINCE") ||
+                                p.Nom.Contains("DEVISE") ||
+                                p.Nom.Contains("CATEGORIE_") ||
+                                !p.Nom.Contains("DELETE_") && 
+                                !p.Nom.Contains("DELETE_USER") &&
+                                !p.Nom.Contains("MANAGE_SYSTEM")).ToList();
+                            
+                            foreach (var permission in supervisorPermissions)
+                            {
+                                rolePermissions.Add(new RolePermission
+                                {
+                                    RoleId = role.IdRole,
+                                    PermissionId = permission.IdPermission,
+                                    DateAttribution = DateTime.Now
+                                });
+                            }
+                        }
+                        // Agent a permissions de base sur ses propres données et transactions, plus nouvelles permissions
+                        else if (role.Nom == "Agent (AT)" || role.Nom == "Agent (AA)")
+                        {
+                            var agentPermissions = allPermissions.Where(p => 
+                                p.Nom.StartsWith("READ_") || 
+                                p.Nom.StartsWith("CREATE_") ||
+                                p.Nom.StartsWith("UPDATE_") ||
+                                p.Nom == "CREATE_TRANSACTION" ||
+                                p.Nom == "READ_TRANSACTION" ||
+                                p.Nom == "CREATE_WALLET_AGENT" ||
+                                p.Nom == "READ_WALLET_AGENT" ||
+                                p.Nom == "UPDATE_WALLET_AGENT" ||
+                                p.Nom == "CREATE_WALLET_VIRTUEL" ||
+                                p.Nom == "READ_WALLET_VIRTUEL" ||
+                                p.Nom == "UPDATE_WALLET_VIRTUEL" ||
+                                p.Nom == "CREATE_WALLET_MOVEMENT" ||
+                                p.Nom == "READ_WALLET_MOVEMENT" ||
+                                p.Nom == "CREATE_COLLECTE" ||
+                                p.Nom == "READ_COLLECTE" ||
+                                p.Nom == "CREATE_AFFILIE" ||
+                                p.Nom == "READ_AFFILIE" ||
+                                p.Nom == "CREATE_ADHESION" ||
+                                p.Nom == "READ_ADHESION" ||
+                                p.Nom == "CREATE_BON_ENVOI" ||
+                                p.Nom == "READ_BON_ENVOI" ||
+                                p.Nom == "ACCESS_DASHBOARD_AGENT" ||
+                                p.Nom.Contains("CATEGORIE_AGENT") ||
+                                p.Nom.Contains("ZONE_SOCIALE") ||
+                                p.Nom.Contains("COMMUNE") ||
+                                p.Nom.Contains("PROVINCE") ||
+                                p.Nom.Contains("DEVISE") ||
+                                p.Nom.Contains("TYPE_ADHESION") ||
+                                p.Nom.Contains("CATEGORIE_ADHESION") ||
+                                !p.Nom.Contains("DELETE_") &&
+                                !p.Nom.Contains("DELETE_USER") &&
+                                !p.Nom.Contains("DELETE_AGENT") &&
+                                !p.Nom.Contains("DELETE_ADHESION") &&
+                                !p.Nom.Contains("DELETE_WALLET_") &&
+                                !p.Nom.Contains("DELETE_TRANSACTION") &&
+                                !p.Nom.Contains("DELETE_PRESTATION") &&
+                                !p.Nom.Contains("DELETE_PRODUIT_") &&
+                                !p.Nom.Contains("DELETE_AFFILIE") &&
+                                !p.Nom.Contains("DELETE_COLLECTE") &&
+                                !p.Nom.Contains("DELETE_BON_ENVOI") &&
+                                !p.Nom.Contains("DELETE_ZONE_SOCIALE") &&
+                                !p.Nom.Contains("DELETE_COMMUNE") &&
+                                !p.Nom.Contains("DELETE_PROVINCE") &&
+                                !p.Nom.Contains("DELETE_DEVISE") &&
+                                !p.Nom.Contains("DELETE_CATEGORIE_") &&
+                                !p.Nom.Contains("MANAGE_SUPERVISION") &&
+                                !p.Nom.Contains("MANAGE_OBJECTIFS") &&
+                                !p.Nom.Contains("VALIDATE_PERFORMANCE") &&
+                                !p.Nom.Contains("GENERATE_RAPPORT") &&
+                                !p.Nom.Contains("EXPORT_DATA") &&
+                                !p.Nom.Contains("MANAGE_SYSTEM")).ToList();
+                            
+                            foreach (var permission in agentPermissions)
+                            {
+                                rolePermissions.Add(new RolePermission
+                                {
+                                    RoleId = role.IdRole,
+                                    PermissionId = permission.IdPermission,
+                                    DateAttribution = DateTime.Now
+                                });
+                            }
+                        }
+                        // Assureur ne peut que lire
+                        else if (role.Nom == "Assureur")
+                        {
+                            var assureurPermissions = allPermissions.Where(p => 
+                                p.Nom.StartsWith("READ_")).ToList();
+                            
+                            foreach (var permission in assureurPermissions)
+                            {
+                                rolePermissions.Add(new RolePermission
+                                {
+                                    RoleId = role.IdRole,
+                                    PermissionId = permission.IdPermission,
+                                    DateAttribution = DateTime.Now
+                                });
+                            }
+                        }
+                    }
+
+                    await context.RolePermissions.AddRangeAsync(rolePermissions);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Attributions rôle-permission créées: {Count}", rolePermissions.Count);
+                }
+
+                // 13. Attribution des rôles aux utilisateurs (CRUCIAL pour les permissions)
+                var adminUser = await context.Utilisateurs.FirstOrDefaultAsync(u => u.EmailUtilisateur == "admin@prosoc.cd");
+                var superAdminUser = await context.Utilisateurs.FirstOrDefaultAsync(u => u.EmailUtilisateur == "superadmin@prosoc.cd");
+
+                if (!await context.UserRoles.AnyAsync() && adminUser != null && superAdminUser != null && adminRole != null && superAdminRole != null && agentAtRole != null)
+                {
+                    var userRoles = new List<UserRole>
+                    {
+                        // Admin et SuperAdmin
+                        new UserRole { UtilisateurId = adminUser.IdUtilisateur, RoleId = adminRole.IdRole, IsPrimary = true, Statut = true, DateAttribution = DateTime.Now },
+                        new UserRole { UtilisateurId = superAdminUser.IdUtilisateur, RoleId = superAdminRole.IdRole, IsPrimary = true, Statut = true, DateAttribution = DateTime.Now }
+                    };
+
+                    // Attribution automatique des rôles pour les utilisateurs agents
+                    var agentUsers = await context.Utilisateurs
+                        .Where(u => u.AgentId.HasValue && u.RoleId == agentAtRole.IdRole)
+                        .ToListAsync();
+
+                    foreach (var agentUser in agentUsers)
+                    {
+                        userRoles.Add(new UserRole 
+                        { 
+                            UtilisateurId = agentUser.IdUtilisateur, 
+                            RoleId = agentAtRole.IdRole, 
+                            IsPrimary = true, 
+                            Statut = true, 
+                            DateAttribution = DateTime.Now 
+                        });
+                    }
+
+                    await context.UserRoles.AddRangeAsync(userRoles);
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Attributions utilisateur-rôle créées: {Count}", userRoles.Count);
+                }
+
+                if (seedDemo)
+                {
+                    await SeedDemoAsync(context, logger);
+                }
+
+                logger.LogInformation("Peuplement de la base de données terminé avec succès !");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Une erreur est survenue lors du peuplement de la base de données");
+                throw;
+            }
+        }
+
+        private static async Task SeedDemoAsync(ProsocDbContext context, ILogger logger)
+        {
+            var gombeNord = await context.ZonesSociales.FirstOrDefaultAsync(z => z.Nom == "Gombe-Nord");
+            var categorieAt = await context.CategoriesAgents.FirstOrDefaultAsync(c => c.LibelleCategorie == "AT");
+
+            if (gombeNord == null || categorieAt == null)
+            {
+                return;
+            }
+
+            var exists = await context.Agents.AnyAsync(a => a.Matricule == "AG003" || a.EmailAgent == "jk@prosoc.cd");
+            if (exists)
+            {
+                return;
+            }
+
+            var agent = new Agent
+            {
+                NomComplet = "Jonathan Kalambayi",
+                Phone = "+243812726582",
+                EmailAgent = "jk@prosoc.cd",
+                Statut = true,
+                DateCreation = DateTime.Now,
+                CategorieAgentId = categorieAt.IdCategorieAgent,
+                ZoneSocialeId = gombeNord.IdZoneSociale,
+                Matricule = "AG003"
+            };
+
+            await context.Agents.AddAsync(agent);
+            await context.SaveChangesAsync();
+            logger.LogInformation("Demo seed: Agent créé: {Matricule}", agent.Matricule);
+        }
+    }
+}

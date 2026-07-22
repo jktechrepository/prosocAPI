@@ -1,0 +1,17 @@
+file;line;pattern
+Controllers/ControllerBaseExtensions.cs;31;structured
+Controllers/TransactionController.cs;35;other
+Controllers/TransactionController.cs;58;other
+Controllers/TransactionController.cs;81;other
+Controllers/TransactionController.cs;104;other
+Controllers/TransactionController.cs;123;other
+Controllers/UpdatePermissionsController.cs;44;other
+Controllers/UtilisateurController.cs;317;other
+Controllers/UtilisateurController.cs;358;other
+Controllers/AdhesionController.cs;77;structured
+Controllers/EnhancedAuthController.cs;55;other
+Controllers/EnhancedAuthController.cs;97;other
+Controllers/RetraitAgentController.cs;249;other
+Controllers/RetraitAgentController.cs;318;other
+Controllers/RetraitAgentController.cs;517;anonymous_error
+Controllers/MobileController.cs;106;other

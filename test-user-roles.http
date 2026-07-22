@@ -1,0 +1,43 @@
+### 👥 TEST GESTION DES RÔLES UTILISATEUR
+@baseUrl = https://localhost:7116
+@email = superadmin@prosoc.cd
+@password = Super-Admin
+
+### 1) Login
+POST {{baseUrl}}/api/utilisateur/login
+Content-Type: application/json
+
+{
+  "emailOuTelephone": "{{email}}",
+  "motDePasse": "{{password}}"
+}
+
+> {%
+client.global.set("auth_token", response.body.accessToken);
+client.global.set("user_id", response.body.utilisateur.idUtilisateur);
+%}
+
+### 2) Lister les rôles d’un utilisateur
+GET {{baseUrl}}/api/utilisateur/{{user_id}}/roles
+Authorization: Bearer {{auth_token}}
+
+### 3) Ajouter un rôle à un utilisateur (ex: roleId=3)
+POST {{baseUrl}}/api/utilisateur/{{user_id}}/roles/3
+Authorization: Bearer {{auth_token}}
+
+### 4) Relister les rôles
+GET {{baseUrl}}/api/utilisateur/{{user_id}}/roles
+Authorization: Bearer {{auth_token}}
+
+### 5) Définir un rôle principal (ex: roleId=3)
+PUT {{baseUrl}}/api/utilisateur/{{user_id}}/roles/3/primary
+Authorization: Bearer {{auth_token}}
+
+### 6) Retirer le rôle (ex: roleId=3)
+DELETE {{baseUrl}}/api/utilisateur/{{user_id}}/roles/3
+Authorization: Bearer {{auth_token}}
+
+### 7) Retester retrait du dernier rôle actif (doit échouer si plus qu’un rôle n’existe pas)
+# Remplace 1 par l'id du rôle restant si besoin
+DELETE {{baseUrl}}/api/utilisateur/{{user_id}}/roles/1
+Authorization: Bearer {{auth_token}}

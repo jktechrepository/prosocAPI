@@ -1,0 +1,36 @@
+Audit BaseApiController — impact transversal sur les erreurs 500
+================================================================
+Date: généré lors de l'audit erreurs 500
+
+Fichier source: Controllers/BaseApiController.cs
+
+Méthodes concernées:
+  - CreatePaginatedResponseAsync (L66-82)
+  - CreateExtendedPaginatedResponseAsync (L88-104)
+
+Comportement actuel:
+  - catch (Exception ex) avec _logger.LogError(ex, ...)
+  - return StatusCode(500, new { error = "Erreur interne du serveur" })
+  - L'exception est journalisée mais ex.Message n'est PAS renvoyé au client
+  - Pas de correlationId structuré (contrairement à ErrorService)
+
+Contrôleurs héritant de BaseApiController: 33 fichiers
+  AdhesionController ne hérite PAS de BaseApiController (ControllerBase direct).
+
+Endpoints utilisant la pagination centralisée (CreatePaginatedResponseAsync
+ou CreateExtendedPaginatedResponseAsync): ~55 appels dans 32 fichiers, dont:
+  - BonEnvoiController (8)
+  - AgentController (4)
+  - AdhesionController (3)
+  - PrestationController, UtilisateurController, CollecteController, WalletAgentController, DependantController (3 chacun)
+  - WalletMouvementController, WalletVirtuelAgentController, DemandeBonEnvoiController, etc.
+
+Impact:
+  Toute erreur survenant dans IPaginationService lors d'un listing paginé
+  renvoie le même message générique, même si le contrôleur enfant utilise
+  ErrorService ailleurs (ex. AdhesionController pour POST with-affilie).
+
+Recommandation (hors scope audit):
+  - Injecter ErrorService dans BaseApiController
+  - Remplacer le return générique par CreateTechnicalError(..., ex)
+  - Ou middleware global pour exceptions non catchées

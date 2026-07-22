@@ -1,0 +1,28 @@
+### Test avec token SANS "Bearer" (Nouveau)
+GET https://localhost:7116/api/authtest/protected
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+### Test avec token AVEC "Bearer" (Standard)
+GET https://localhost:7116/api/authtest/protected
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+### Login et stockage automatique du token
+POST https://localhost:7116/api/utilisateur/login
+Content-Type: application/json
+
+{
+  "emailOuTelephone": "superadmin@prosoc.cd",
+  "motDePasse": "Super-Admin"
+}
+
+> {%
+client.global.set("auth_token", response.body.accessToken);
+%}
+
+### Utilisation du token (sans Bearer)
+GET https://localhost:7116/api/authtest/protected
+Authorization: {{auth_token}}
+
+### Utilisation du token (avec Bearer)
+GET https://localhost:7116/api/authtest/protected
+Authorization: Bearer {{auth_token}}

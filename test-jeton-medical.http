@@ -1,0 +1,143 @@
+### Tests du Système de Jetons Médicaux
+@baseUrl = https://localhost:7116
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+### 1. Créer un hôpital partenaire (prérequis)
+POST {{baseUrl}}/api/hopitalpartenaire
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nom": "Hôpital Général de Kinshasa",
+  "adresse": "Avenue des Cliniques, Kinshasa",
+  "telephone": "+243812345678",
+  "email": "contact@hgk.cd",
+  "contactPersonne": "Dr. Mukendi",
+  "codeAcces": "HGK2026",
+  "niveau": "Tertiaire",
+  "servicesOfferts": "Urgence, Chirurgie, Pédiatrie",
+  "plafondJournalier": 500.00
+}
+
+### 2. Émettre un jeton médical
+POST {{baseUrl}}/api/jetonmedical
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "affilieId": 1,
+  "hopitalPartenaireId": 1,
+  "observation": "Consultation générale",
+  "dateExpiration": "2026-04-10T00:00:00"
+}
+
+### 3. Valider un jeton (endpoint public pour hôpitaux)
+POST {{baseUrl}}/api/jetonmedical/valider
+Content-Type: application/json
+
+{
+  "codeJeton": "JETABC123456",
+  "hopitalPartenaireId": 1
+}
+
+### 4. Utiliser un jeton
+POST {{baseUrl}}/api/jetonmedical/utiliser
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idJeton": 1,
+  "codeJeton": "JETABC123456",
+  "hopitalPartenaireId": 1,
+  "observationUtilisation": "Patient traité pour grippe"
+}
+
+### 5. Récupérer tous les jetons d'un affilié
+GET {{baseUrl}}/api/jetonmedical/by-affilie/1
+Authorization: Bearer {{token}}
+
+### 6. Récupérer les jetons valides
+GET {{baseUrl}}/api/jetonmedical/valides
+Authorization: Bearer {{token}}
+
+### 7. Récupérer les jetons expirés
+GET {{baseUrl}}/api/jetonmedical/expires
+Authorization: Bearer {{token}}
+
+### 8. Récupérer les statistiques mensuelles
+GET {{baseUrl}}/api/jetonmedical/stats/2026-03-01
+Authorization: Bearer {{token}}
+
+### 9. Archiver les jetons expirés
+POST {{baseUrl}}/api/jetonmedical/archiver-expires
+Authorization: Bearer {{token}}
+
+### 10. Récupérer un jeton spécifique
+GET {{baseUrl}}/api/jetonmedical/1
+Authorization: Bearer {{token}}
+
+### 11. Récupérer tous les jetons
+GET {{baseUrl}}/api/jetonmedical
+Authorization: Bearer {{token}}
+
+### 12. Test de validation avec jeton invalide
+POST {{baseUrl}}/api/jetonmedical/valider
+Content-Type: application/json
+
+{
+  "codeJeton": "JETINVALIDE",
+  "hopitalPartenaireId": 1
+}
+
+### 13. Test de validation avec jeton expiré
+POST {{baseUrl}}/api/jetonmedical/valider
+Content-Type: application/json
+
+{
+  "codeJeton": "JETEXPIRE123",
+  "hopitalPartenaireId": 1
+}
+
+### 14. Créer plusieurs jetons pour le même affilié
+POST {{baseUrl}}/api/jetonmedical
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "affilieId": 1,
+  "hopitalPartenaireId": 1,
+  "observation": "Consultation spécialisée"
+}
+
+### 15. Vérifier la limite de jetons par affilié
+GET {{baseUrl}}/api/jetonmedical/by-affilie/1
+Authorization: Bearer {{token}}
+
+### 16. Test de performance - validation multiple
+POST {{baseUrl}}/api/jetonmedical/valider
+Content-Type: application/json
+
+{
+  "codeJeton": "JETPERF001",
+  "hopitalPartenaireId": 1
+}
+
+### 17. Test de sécurité - tentative d'utilisation sans autorisation
+POST {{baseUrl}}/api/jetonmedical/utiliser
+Content-Type: application/json
+
+{
+  "idJeton": 1,
+  "codeJeton": "JETABC123456",
+  "hopitalPartenaireId": 1,
+  "observationUtilisation": "Tentative non autorisée"
+}
+
+### 18. Test de validation avec mauvais hôpital
+POST {{baseUrl}}/api/jetonmedical/valider
+Content-Type: application/json
+
+{
+  "codeJeton": "JETABC123456",
+  "hopitalPartenaireId": 999
+}

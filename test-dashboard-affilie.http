@@ -1,0 +1,280 @@
+### Tests du Dashboard Affilié
+@baseUrl = https://localhost:7116
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+@affilieId = 1
+
+### 1. Récupérer le dashboard complet de l'affilié
+GET {{baseUrl}}/api/dashboardaffilie/resume/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 2. Récupérer les KPIs principaux de l'affilié
+GET {{baseUrl}}/api/dashboardaffilie/kpis/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 3. Récupérer les informations de base de l'affilié
+GET {{baseUrl}}/api/dashboardaffilie/info/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 4. Récupérer les cotisations du mois en cours
+GET {{baseUrl}}/api/dashboardaffilie/cotisations/{{affilieId}}?mois=3&annee=2026
+Authorization: Bearer {{token}}
+
+### 5. Récupérer les cotisations récentes
+GET {{baseUrl}}/api/dashboardaffilie/cotisations/recentes/{{affilieId}}?limit=5
+Authorization: Bearer {{token}}
+
+### 6. Récupérer les prestations du mois en cours
+GET {{baseUrl}}/api/dashboardaffilie/prestations/{{affilieId}}?mois=3&annee=2026
+Authorization: Bearer {{token}}
+
+### 7. Récupérer les prestations récentes
+GET {{baseUrl}}/api/dashboardaffilie/prestations/recentes/{{affilieId}}?limit=5
+Authorization: Bearer {{token}}
+
+### 8. Récupérer les bénéficiaires de l'affilié
+GET {{baseUrl}}/api/dashboardaffilie/beneficiaires/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 9. Récupérer les graphiques et statistiques
+GET {{baseUrl}}/api/dashboardaffilie/graphiques/{{affilieId}}?annee=2026
+Authorization: Bearer {{token}}
+
+### 10. Récupérer les notifications de l'affilié
+GET {{baseUrl}}/api/dashboardaffilie/notifications/{{affilieId}}?limit=10
+Authorization: Bearer {{token}}
+
+### 11. Récupérer le nombre de notifications non lues
+GET {{baseUrl}}/api/dashboardaffilie/notifications/non-lues/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 12. Marquer une notification comme lue
+PUT {{baseUrl}}/api/dashboardaffilie/notifications/1/lire
+Authorization: Bearer {{token}}
+
+### 13. Récupérer les documents de l'affilié
+GET {{baseUrl}}/api/dashboardaffilie/documents/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 14. Récupérer les documents en attente de validation
+GET {{baseUrl}}/api/dashboardaffilie/documents/en-attente/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 15. Récupérer les préférences de l'affilié
+GET {{baseUrl}}/api/dashboardaffilie/preferences/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 16. Mettre à jour les préférences de l'affilié
+PUT {{baseUrl}}/api/dashboardaffilie/preferences/{{affilieId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "notificationsEmail": true,
+  "notificationsSMS": false,
+  "languePreferee": "fr",
+  "recevoirRappelsCotisation": true,
+  "recevoirAlertesPrestation": true,
+  "recevoirNewsletter": false,
+  "frequenceRappelsJours": 7,
+  "modeSombre": false,
+  "formatRapports": "PDF",
+  "partagerDonneesStatistiques": true
+}
+
+### 17. Récupérer le résumé annuel de l'affilié
+GET {{baseUrl}}/api/dashboardaffilie/resume-annuel/{{affilieId}}?annee=2026
+Authorization: Bearer {{token}}
+
+### 18. Exporter les cotisations en PDF
+GET {{baseUrl}}/api/dashboardaffilie/export/cotisations/{{affilieId}}?mois=3&annee=2026&format=PDF
+Authorization: Bearer {{token}}
+
+### 19. Exporter les cotisations en Excel
+GET {{baseUrl}}/api/dashboardaffilie/export/cotisations/{{affilieId}}?mois=3&annee=2026&format=EXCEL
+Authorization: Bearer {{token}}
+
+### 20. Exporter les prestations en PDF
+GET {{baseUrl}}/api/dashboardaffilie/export/prestations/{{affilieId}}?mois=3&annee=2026&format=PDF
+Authorization: Bearer {{token}}
+
+### 21. Exporter les prestations en CSV
+GET {{baseUrl}}/api/dashboardaffilie/export/prestations/{{affilieId}}?mois=3&annee=2026&format=CSV
+Authorization: Bearer {{token}}
+
+### 22. Récupérer les alertes de cotisation
+GET {{baseUrl}}/api/dashboardaffilie/alertes/cotisation/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 23. Récupérer les alertes de prestation
+GET {{baseUrl}}/api/dashboardaffilie/alertes/prestation/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 24. Récupérer les alertes de document
+GET {{baseUrl}}/api/dashboardaffilie/alertes/document/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 25. Récupérer les alertes d'expiration
+GET {{baseUrl}}/api/dashboardaffilie/alertes/expiration/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 26. Test de dashboard avec un autre affilié
+GET {{baseUrl}}/api/dashboardaffilie/resume/2?annee=2026
+Authorization: Bearer {{token}}
+
+### 27. Test avec une année différente
+GET {{baseUrl}}/api/dashboardaffilie/resume/{{affilieId}}?annee=2025
+Authorization: Bearer {{token}}
+
+### 28. Test de cotisations pour un mois spécifique
+GET {{baseUrl}}/api/dashboardaffilie/cotisations/{{affilieId}}?mois=12&annee=2025
+Authorization: Bearer {{token}}
+
+### 29. Test de prestations pour une période différente
+GET {{baseUrl}}/api/dashboardaffilie/prestations/{{affilieId}}?mois=1&annee=2026
+Authorization: Bearer {{token}}
+
+### 30. Test de graphiques pour l'année précédente
+GET {{baseUrl}}/api/dashboardaffilie/graphiques/{{affilieId}}?annee=2025
+Authorization: Bearer {{token}}
+
+### 31. Test avec limites différentes
+GET {{baseUrl}}/api/dashboardaffilie/cotisations/recentes/{{affilieId}}?limit=3
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/dashboardaffilie/prestations/recentes/{{affilieId}}?limit=3
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/dashboardaffilie/notifications/{{affilieId}}?limit=5
+Authorization: Bearer {{token}}
+
+### 32. Test de préférences avec différentes options
+PUT {{baseUrl}}/api/dashboardaffilie/preferences/{{affilieId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "notificationsEmail": false,
+  "notificationsSMS": true,
+  "languePreferee": "en",
+  "fuseauHoraire": "UTC+1",
+  "recevoirRappelsCotisation": false,
+  "recevoirAlertesPrestation": true,
+  "recevoirNewsletter": true,
+  "frequenceRappelsJours": 15,
+  "emailSecondaire": "test@example.com",
+  "telephoneSecondaire": "+243123456789",
+  "modeSombre": true,
+  "formatRapports": "EXCEL",
+  "partagerDonneesStatistiques": false
+}
+
+### 33. Test d'export avec différents formats
+GET {{baseUrl}}/api/dashboardaffilie/export/cotisations/{{affilieId}}?mois=2&annee=2026&format=CSV
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/dashboardaffilie/export/prestations/{{affilieId}}?mois=2&annee=2026&format=EXCEL
+Authorization: Bearer {{token}}
+
+### 34. Test de résumé annuel pour différentes années
+GET {{baseUrl}}/api/dashboardaffilie/resume-annuel/{{affilieId}}?annee=2024
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/dashboardaffilie/resume-annuel/{{affilieId}}?annee=2025
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/dashboardaffilie/resume-annuel/{{affilieId}}?annee=2026
+Authorization: Bearer {{token}}
+
+### 35. Test d'erreurs - Affilié non existant
+GET {{baseUrl}}/api/dashboardaffilie/resume/99999
+Authorization: Bearer {{token}}
+
+### 36. Test d'erreurs - Token invalide
+GET {{baseUrl}}/api/dashboardaffilie/resume/{{affilieId}}
+Authorization: Bearer token_invalide
+
+### 37. Test d'erreurs - Sans autorisation
+GET {{baseUrl}}/api/dashboardaffilie/resume/{{affilieId}}
+
+### 38. Test de performance - Dashboard complet
+GET {{baseUrl}}/api/dashboardaffilie/resume/{{affilieId}}?annee=2026
+Authorization: Bearer {{token}}
+
+### 39. Test de performance - Graphiques avec beaucoup de données
+GET {{baseUrl}}/api/dashboardaffilie/graphiques/{{affilieId}}?annee=2026
+Authorization: Bearer {{token}}
+
+### 40. Test de workflow complet - Simulation d'un affilié actif
+### 40.1 Récupérer le dashboard
+GET {{baseUrl}}/api/dashboardaffilie/resume/{{affilieId}}?annee=2026
+Authorization: Bearer {{token}}
+
+### 40.2 Vérifier les KPIs
+GET {{baseUrl}}/api/dashboardaffilie/kpis/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 40.3 Consulter les cotisations récentes
+GET {{baseUrl}}/api/dashboardaffilie/cotisations/recentes/{{affilieId}}?limit=3
+Authorization: Bearer {{token}}
+
+### 40.4 Consulter les prestations récentes
+GET {{baseUrl}}/api/dashboardaffilie/prestations/recentes/{{affilieId}}?limit=3
+Authorization: Bearer {{token}}
+
+### 40.5 Vérifier les alertes
+GET {{baseUrl}}/api/dashboardaffilie/alertes/cotisation/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 40.6 Consulter les notifications
+GET {{baseUrl}}/api/dashboardaffilie/notifications/{{affilieId}}?limit=5
+Authorization: Bearer {{token}}
+
+### 40.7 Exporter un rapport
+GET {{baseUrl}}/api/dashboardaffilie/export/cotisations/{{affilieId}}?mois=3&annee=2026&format=PDF
+Authorization: Bearer {{token}}
+
+### 41. Test de validation des préférences
+PUT {{baseUrl}}/api/dashboardaffilie/preferences/{{affilieId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "notificationsEmail": true,
+  "notificationsSMS": true,
+  "languePreferee": "fr",
+  "recevoirRappelsCotisation": true,
+  "recevoirAlertesPrestation": true,
+  "recevoirNewsletter": true,
+  "frequenceRappelsJours": 7,
+  "modeSombre": false,
+  "formatRapports": "PDF",
+  "partagerDonneesStatistiques": true
+}
+
+### 42. Test de marquage de notifications comme lues
+PUT {{baseUrl}}/api/dashboardaffilie/notifications/1/lire
+Authorization: Bearer {{token}}
+
+PUT {{baseUrl}}/api/dashboardaffilie/notifications/2/lire
+Authorization: Bearer {{token}}
+
+### 43. Vérifier le nombre de notifications non lues après marquage
+GET {{baseUrl}}/api/dashboardaffilie/notifications/non-lues/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 44. Test des alertes par type
+GET {{baseUrl}}/api/dashboardaffilie/alertes/cotisation/{{affilieId}}
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/dashboardaffilie/alertes/prestation/{{affilieId}}
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/dashboardaffilie/alertes/document/{{affilieId}}
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/dashboardaffilie/alertes/expiration/{{affilieId}}
+Authorization: Bearer {{token}}
+
+### 45. Test final - Dashboard complet après modifications
+GET {{baseUrl}}/api/dashboardaffilie/resume/{{affilieId}}?annee=2026
+Authorization: Bearer {{token}}

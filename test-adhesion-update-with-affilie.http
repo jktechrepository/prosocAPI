@@ -1,0 +1,278 @@
+### Test API Adhesion UpdateWithAffilieAsync
+
+# 1. Créer une adhésion de test d'abord (si nécessaire)
+POST {{baseUrl}}/api/adhesion/create-with-affilie
+Content-Type: application/json
+
+{
+  "affilie": {
+    "nom": "KABONGO",
+    "prenom": "Jean",
+    "dateNaissance": "1990-05-15",
+    "telephone": "+243812345678",
+    "provinceResidence": "Kinshasa",
+    "communeResidence": "Lingwala",
+    "quartierResidence": "Kintambo",
+    "avenueResidence": "ByPass",
+    "numeroResidence": "123",
+    "communeActivite": "Lingwala",
+    "quartierActivite": "Kintambo",
+    "avenueActivite": "ByPass",
+    "numeroActivite": "123"
+  },
+  "adhesion": {
+    "statutDossier": "EN ATTENTE",
+    "typeAdhesionId": 1,
+    "agentId": 1
+  },
+  "souscriptions": [
+    {
+      "prestationId": 1,
+      "dateSouscription": "2024-01-01",
+      "statut": true
+    }
+  ],
+  "collecte": {
+    "montant": 10000,
+    "modePaiement": "MOBILE_MONEY",
+    "referencePaiement": "REF123456"
+  }
+}
+
+###
+
+# 2. Mettre à jour l'adhésion avec l'endpoint UpdateWithAffilieAsync
+PUT {{baseUrl}}/api/adhesion/UpdateWithAffilieAsync/1
+Content-Type: application/json
+
+{
+  "affilie": {
+    "nom": "KABONGO",
+    "prenom": "Jean-Pierre",
+    "dateNaissance": "1990-05-15",
+    "telephone": "+243812345679",
+    "postnom": "Antoine",
+    "provinceResidence": "Kinshasa",
+    "communeResidence": "Lingwala",
+    "quartierResidence": "Kintambo",
+    "avenueResidence": "ByPass",
+    "numeroResidence": "124",
+    "communeActivite": "Lingwala",
+    "quartierActivite": "Kintambo",
+    "avenueActivite": "ByPass",
+    "numeroActivite": "124",
+    "statut": true
+  },
+  "adhesion": {
+    "statutDossier": "COMPLET"
+  },
+  "souscriptions": [
+    {
+      "prestationId": 1,
+      "dateDebut": "2024-01-01",
+      "statut": true
+    },
+    {
+      "prestationId": 2,
+      "dateDebut": "2024-02-01",
+      "statut": true
+    }
+  ],
+  "dependents": [
+    {
+      "idDependant": null,
+      "nom": "KABONGO",
+      "prenom": "Marie",
+      "dateNaissance": "2015-03-10",
+      "lienParente": "Fille",
+      "typePieceIdentite": "CARTE_MINEURE",
+      "numeroPieceIdentite": "M123456",
+      "statut": true
+    },
+    {
+      "idDependant": null,
+      "nom": "KABONGO",
+      "prenom": "Paul",
+      "dateNaissance": "2018-07-20",
+      "lienParente": "Fils",
+      "typePieceIdentite": "CARTE_MINEURE",
+      "numeroPieceIdentite": "M123457",
+      "statut": true
+    }
+  ]
+}
+
+###
+
+# 3. Mettre à jour l'adhésion avec les bons champs (selon les modèles réels)
+PUT {{baseUrl}}/api/adhesion/UpdateWithAffilieAsync/1
+Content-Type: application/json
+
+{
+  "affilie": {
+    "nom": "KABONGO",
+    "prenom": "Jean-Pierre",
+    "dateNaissance": "1990-05-15",
+    "provinceResidence": "Kinshasa",
+    "communeResidence": "Lingwala",
+    "quartierResidence": "Kintambo",
+    "statut": true
+  },
+  "adhesion": {
+    "statutDossier": "ACTIVE"
+  },
+  "souscriptions": [
+    {
+      "prestationId": 1,
+      "dateDebut": "2024-01-01",
+      "statut": true
+    }
+  ],
+  "dependents": [
+    {
+      "idDependant": null,
+      "nom": "KABONGO",
+      "lienParente": "Fille",
+      "statut": true
+    }
+  ]
+}
+
+###
+
+# 4. Mettre à jour un dépendant existant
+PUT {{baseUrl}}/api/adhesion/UpdateWithAffilieAsync/1
+Content-Type: application/json
+
+{
+  "affilie": {
+    "nom": "KABONGO",
+    "prenom": "Jean-Pierre",
+    "dateNaissance": "1990-05-15",
+    "provinceResidence": "Kinshasa",
+    "communeResidence": "Lingwala",
+    "quartierResidence": "Kintambo",
+    "statut": true
+  },
+  "adhesion": {
+    "statutDossier": "ACTIVE"
+  },
+  "souscriptions": [
+    {
+      "prestationId": 1,
+      "dateDebut": "2024-01-01",
+      "statut": true
+    }
+  ],
+  "dependents": [
+    {
+      "idDependant": 1,
+      "nom": "KABONGO",
+      "lienParente": "Fille",
+      "statut": true
+    }
+  ]
+}
+
+###
+
+# 5. Supprimer un dépendant (ne pas l'inclure dans la liste)
+PUT {{baseUrl}}/api/adhesion/UpdateWithAffilieAsync/1
+Content-Type: application/json
+
+{
+  "affilie": {
+    "nom": "KABONGO",
+    "prenom": "Jean-Pierre",
+    "dateNaissance": "1990-05-15",
+    "provinceResidence": "Kinshasa",
+    "communeResidence": "Lingwala",
+    "quartierResidence": "Kintambo",
+    "statut": true
+  },
+  "adhesion": {
+    "statutDossier": "ACTIVE"
+  },
+  "souscriptions": [
+    {
+      "prestationId": 1,
+      "dateDebut": "2024-01-01",
+      "statut": true
+    }
+  ],
+  "dependents": []
+}
+
+###
+
+# 6. Tester les erreurs - Adhésion non trouvée
+PUT {{baseUrl}}/api/adhesion/UpdateWithAffilieAsync/999
+Content-Type: application/json
+
+{
+  "affilie": {
+    "nom": "TEST",
+    "prenom": "Test",
+    "dateNaissance": "1990-05-15",
+    "provinceResidence": "Kinshasa",
+    "communeResidence": "Lingwala",
+    "quartierResidence": "Kintambo",
+    "statut": true
+  },
+  "adhesion": {
+    "statutDossier": "COMPLET"
+  },
+  "souscriptions": [],
+  "dependents": []
+}
+
+###
+
+# 7. Tester les erreurs - Statut incorrect (pas EN ATTENTE)
+PUT {{baseUrl}}/api/adhesion/UpdateWithAffilieAsync/1
+Content-Type: application/json
+
+{
+  "affilie": {
+    "nom": "TEST",
+    "prenom": "Test",
+    "dateNaissance": "1990-05-15",
+    "provinceResidence": "Kinshasa",
+    "communeResidence": "Lingwala",
+    "quartierResidence": "Kintambo",
+    "statut": true
+  },
+  "adhesion": {
+    "statutDossier": "COMPLET"
+  },
+  "souscriptions": [],
+  "dependents": []
+}
+
+###
+
+# 8. Tester les erreurs - Adresse incomplète
+PUT {{baseUrl}}/api/adhesion/UpdateWithAffilieAsync/1
+Content-Type: application/json
+
+{
+  "affilie": {
+    "nom": "TEST",
+    "prenom": "Test",
+    "dateNaissance": "1990-05-15",
+    "provinceResidence": "",
+    "communeResidence": "Lingwala",
+    "quartierResidence": "Kintambo",
+    "statut": true
+  },
+  "adhesion": {
+    "statutDossier": "COMPLET"
+  },
+  "souscriptions": [],
+  "dependents": []
+}
+
+###
+
+# 9. Vérifier l'adhésion mise à jour
+GET {{baseUrl}}/api/adhesion/1

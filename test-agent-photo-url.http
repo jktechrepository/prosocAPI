@@ -1,0 +1,88 @@
+### Test API Agent avec PhotoUrl
+
+# 1. Créer un agent avec PhotoUrl
+POST {{baseUrl}}/api/agent
+Content-Type: application/json
+
+{
+  "nomComplet": "Jean Pierre KABONGO",
+  "matricule": "AG-001",
+  "phone": "+243812345678",
+  "emailAgent": "jean.kabongo@example.com",
+  "fonction": "Agent de terrain",
+  "roleAgent": "Agent",
+  "photoUrl": "https://example.com/photos/jean-kabongo.jpg",
+  "zoneSocialeId": 1,
+  "categorieAgentId": 1,
+  "statut": true
+}
+
+###
+
+# 2. Mettre à jour un agent avec PhotoUrl
+PUT {{baseUrl}}/api/agent/1
+Content-Type: application/json
+
+{
+  "nomComplet": "Jean Pierre KABONGO",
+  "matricule": "AG-001",
+  "phone": "+243812345678",
+  "emailAgent": "jean.kabongo@example.com",
+  "fonction": "Agent senior",
+  "roleAgent": "Agent",
+  "photoUrl": "https://example.com/photos/jean-kabongo-updated.jpg",
+  "zoneSocialeId": 1,
+  "categorieAgentId": 1,
+  "statut": true
+}
+
+###
+
+# 3. Récupérer tous les agents (vérifier que PhotoUrl est inclus)
+GET {{baseUrl}}/api/agent
+Content-Type: application/json
+
+###
+
+# 4. Récupérer un agent spécifique (vérifier que PhotoUrl est inclus)
+GET {{baseUrl}}/api/agent/1
+Content-Type: application/json
+
+###
+
+# 5. Créer un agent sans PhotoUrl (devrait être null)
+POST {{baseUrl}}/api/agent
+Content-Type: application/json
+
+{
+  "nomComplet": "Marie MBUYU",
+  "matricule": "AG-002",
+  "phone": "+243812345679",
+  "emailAgent": "marie.mbuyu@example.com",
+  "fonction": "Agent de terrain",
+  "roleAgent": "Agent",
+  "zoneSocialeId": 1,
+  "categorieAgentId": 1,
+  "statut": true
+}
+
+###
+
+# 6. Tester avec une URL de photo plus longue (max 500 caractères)
+POST {{baseUrl}}/api/agent
+Content-Type: application/json
+
+{
+  "nomComplet": "Paul TSHILOMBO",
+  "matricule": "AG-003",
+  "phone": "+243812345680",
+  "emailAgent": "paul.tshilombo@example.com",
+  "fonction": "Superviseur",
+  "roleAgent": "Superviseur",
+  "photoUrl": "https://storage.googleapis.com/prosoc-photos/agents/2024/03/10/paul-tshilombo-professional-photo-high-resolution.jpg",
+  "zoneSocialeId": 1,
+  "categorieAgentId": 2,
+  "statut": true
+}
+
+###

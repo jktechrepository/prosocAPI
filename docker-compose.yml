@@ -1,0 +1,229 @@
+version: '3.8'
+
+services:
+  # Main API application
+  prosoc-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prosoc-api
+    ports:
+      - "5000:80"
+      - "5001:443"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=prosoc-db;Port=3306;Database=prosoc_dev;User=root;Password=root123
+      - ConnectionStrings__RedisConnection=prosoc-redis:6379
+      - JWT__SecretKey=your-super-secret-jwt-key-change-in-production
+      - JWT__Issuer=ProsocAPI
+      - JWT__Audience=ProsocClients
+      - JWT__ExpirationMinutes=60
+      - Logging__LogLevel__Default=Information
+      - Logging__LogLevel__Microsoft=Warning
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Information
+    depends_on:
+      - prosoc-db
+      - prosoc-redis
+    networks:
+      - prosoc-network
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MySQL Database
+  prosoc-db:
+    image: mysql:8.0
+    container_name: prosoc-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=prosoc_dev
+      - MYSQL_USER=prosoc_user
+      - MYSQL_PASSWORD=prosoc_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - prosoc-db-data:/var/lib/mysql
+      - ./database/init:/docker-entrypoint-initdb.d
+      - ./database/conf:/etc/mysql/conf.d
+    networks:
+      - prosoc-network
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # Redis Cache
+  prosoc-redis:
+    image: redis:7-alpine
+    container_name: prosoc-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - prosoc-redis-data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - prosoc-network
+    restart: unless-stopped
+    command: redis-server /usr/local/etc/redis/redis.conf --appendonly yes
+
+  # Nginx Reverse Proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: prosoc-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - prosoc-api
+    networks:
+      - prosoc-network
+    restart: unless-stopped
+
+  # Hangfire Dashboard (optional)
+  hangfire-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prosoc-hangfire
+    ports:
+      - "5002:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=prosoc-db;Port=3306;Database=prosoc_dev;User=root;Password=root123
+      - Hangfire__DashboardEnabled=true
+      - Hangfire__DashboardPath=/hangfire
+    depends_on:
+      - prosoc-db
+    networks:
+      - prosoc-network
+    restart: unless-stopped
+    command: ["dotnet", "ProsocAPI.dll", "--hangfire-dashboard"]
+
+  # Test Database (for integration tests)
+  prosoc-test-db:
+    image: mysql:8.0
+    container_name: prosoc-test-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=prosoc_test
+      - MYSQL_USER=test_user
+      - MYSQL_PASSWORD=test_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - prosoc-test-db-data:/var/lib/mysql
+    networks:
+      - prosoc-network
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # Monitoring with Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prosoc-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - prosoc-network
+    restart: unless-stopped
+
+  # Monitoring with Grafana (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: prosoc-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - prosoc-network
+    restart: unless-stopped
+
+  # Log aggregation with ELK Stack (optional)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: prosoc-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - prosoc-network
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: prosoc-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - prosoc-network
+    restart: unless-stopped
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: prosoc-logstash
+    ports:
+      - "5044:5044"
+    volumes:
+      - ./logging/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./logging/logstash.yml:/usr/share/logstash/config/logstash.yml
+    depends_on:
+      - elasticsearch
+    networks:
+      - prosoc-network
+    restart: unless-stopped
+
+volumes:
+  prosoc-db-data:
+    driver: local
+  prosoc-redis-data:
+    driver: local
+  prosoc-test-db-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
+
+networks:
+  prosoc-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

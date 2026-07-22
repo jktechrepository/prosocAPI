@@ -1,0 +1,89 @@
+@baseUrl = https://testprosoc.kansaconsulting.com/api
+@authToken = {{token}}
+
+### 1) Nouveau endpoint: adhesion + paiement electronique (Mobile Money)
+POST {{baseUrl}}/Adhesion/with-affilie-paiement-electronique
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "modePaiement": "MOBILE_MONEY",
+  "telephonePaiement": "0822222222",
+  "devisePaiementId": 1,
+  "adhesion": {
+    "nom": "Doe",
+    "prenom": "John",
+    "dateNaissance": "1992-04-05",
+    "telephone": "0822222222",
+    "provinceResidence": "Kinshasa",
+    "communeResidence": "Gombe",
+    "quartierResidence": "Centre",
+    "photoBase64": "cGhvdG8=",
+    "photoContentType": "image/jpeg",
+    "carteIdentiteBase64": "Y2FydGU=",
+    "carteIdentiteContentType": "image/jpeg",
+    "statutDossier": "EN ATTENTE",
+    "typeAdhesionId": 1,
+    "agentId": 1,
+    "collectes": [
+      {
+        "typeCollecte": "Cotisation",
+        "cotisationAffilieId": 1,
+        "montant": 1.5,
+        "mois": 5,
+        "annee": 2026,
+        "modePaiement": "MOBILE_MONEY",
+        "statutPaiement": "EN_ATTENTE",
+        "deviseId": 1
+      },
+      {
+        "typeCollecte": "Souscription",
+        "montant": 5000,
+        "mois": 5,
+        "annee": 2026,
+        "modePaiement": "MOBILE_MONEY",
+        "statutPaiement": "EN_ATTENTE",
+        "deviseId": 1,
+        "souscription": {
+          "prestationId": 1
+        }
+      }
+    ]
+  }
+}
+
+### 2) Endpoint legacy: doit refuser FlexPay et orienter vers le nouveau endpoint
+POST {{baseUrl}}/Adhesion/with-affilie
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "nom": "Legacy",
+  "prenom": "FlexPay",
+  "dateNaissance": "1992-04-05",
+  "telephone": "0822222222",
+  "provinceResidence": "Kinshasa",
+  "communeResidence": "Gombe",
+  "quartierResidence": "Centre",
+  "photoBase64": "cGhvdG8=",
+  "photoContentType": "image/jpeg",
+  "carteIdentiteBase64": "Y2FydGU=",
+  "carteIdentiteContentType": "image/jpeg",
+  "statutDossier": "EN ATTENTE",
+  "typeAdhesionId": 1,
+  "agentId": 1,
+  "collectes": [
+    {
+      "typeCollecte": "Souscription",
+      "montant": 5000,
+      "mois": 5,
+      "annee": 2026,
+      "modePaiement": "MOBILE_MONEY",
+      "statutPaiement": "EN_ATTENTE",
+      "deviseId": 1,
+      "souscription": {
+        "prestationId": 1
+      }
+    }
+  ]
+}

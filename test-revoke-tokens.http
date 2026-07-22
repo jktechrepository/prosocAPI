@@ -1,0 +1,119 @@
+### 🔐 TEST DES ENDPOINTS DE RÉVOCATION DE TOKENS
+### Base URL et identifiants
+@baseUrl = https://localhost:7116
+@email = superadmin@prosoc.cd
+@password = Super-Admin
+
+### 1. Connexion pour obtenir un token
+POST {{baseUrl}}/api/utilisateur/login
+Content-Type: application/json
+
+{
+  "emailOuTelephone": "{{email}}",
+  "motDePasse": "{{password}}"
+}
+
+> {%
+client.global.set("auth_token", response.body.accessToken);
+client.global.set("refresh_token", response.body.refreshToken);
+client.global.set("user_id", response.body.utilisateur.idUtilisateur);
+%}
+
+### 2. Test de révélation d'un token spécifique
+POST {{baseUrl}}/api/utilisateur/revoke-token
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refresh_token}}"
+}
+
+### 3. Test de révocation de tous les tokens de l'utilisateur
+POST {{baseUrl}}/api/utilisateur/revoke-all-tokens
+Authorization: Bearer {{auth_token}}
+
+### 4. Tentative de rafraîchir un token révoqué (doit échouer)
+POST {{baseUrl}}/api/utilisateur/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refresh_token}}"
+}
+
+### 5. Test avec un token qui n'existe pas
+POST {{baseUrl}}/api/utilisateur/revoke-token
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "refreshToken": "token-inexistant-12345"
+}
+
+### 6. Test sans autorisation (doit échouer)
+POST {{baseUrl}}/api/utilisateur/revoke-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refresh_token}}"
+}
+
+### 7. Test revoke-all-tokens sans autorisation (doit échouer)
+POST {{baseUrl}}/api/utilisateur/revoke-all-tokens
+
+### 8. Nouvelle connexion pour obtenir un nouveau token
+POST {{baseUrl}}/api/utilisateur/login
+Content-Type: application/json
+
+{
+  "emailOuTelephone": "{{email}}",
+  "motDePasse": "{{password}}"
+}
+
+> {%
+client.global.set("new_auth_token", response.body.accessToken);
+client.global.set("new_refresh_token", response.body.refreshToken);
+%}
+
+### 9. Test de révélation avec le nouveau token
+POST {{baseUrl}}/api/utilisateur/revoke-token
+Authorization: Bearer {{new_auth_token}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{new_refresh_token}}"
+}
+
+### 10. Vérifier que le endpoint logout fonctionne toujours
+POST {{baseUrl}}/api/utilisateur/logout
+Authorization: Bearer {{new_auth_token}}
+
+###############################################
+# RÉSULTATS ATTENDUS
+###############################################
+
+# Test 2: revoke-token avec token valide
+# - Statut: 200 OK
+# - Message: "Token révoqué avec succès"
+
+# Test 3: revoke-all-tokens
+# - Statut: 200 OK  
+# - Message: "Tous les tokens ont été révoqués avec succès"
+
+# Test 4: refresh avec token révoqué
+# - Statut: 400 Bad Request
+# - Message: "Refresh token invalide ou expiré"
+
+# Test 5: revoke-token avec token inexistant
+# - Statut: 400 Bad Request
+# - Message: "Token invalide ou non trouvé"
+
+# Tests 6-7: Sans autorisation
+# - Statut: 401 Unauthorized
+
+# Test 9: revoke-token avec nouveau token
+# - Statut: 200 OK
+# - Message: "Token révoqué avec succès"
+
+# Test 10: logout standard
+# - Statut: 200 OK
+# - Message: "Déconnexion réussie"

@@ -1,0 +1,29 @@
+=== Audit erreurs HTTP 500 — 2026-06-11T14:08:11Z ===
+
+Total StatusCode(500): 16
+  - generic_string ("Erreur interne du serveur"): 0
+  - anonymous_error ({ error: ... }): 1
+  - anonymous_message ({ message/Message: ... }): 0
+  - structured (CreateTechnicalError / errorResponse): 2
+  - other: 13
+
+Catch (Exception ex) avec réponse générique (ex ignoré): 0
+TechnicalErrorResponse (format structuré): 377
+
+Top 10 contrôleurs par nombre de StatusCode(500):
+    5  Controllers/TransactionController.cs
+    3  Controllers/RetraitAgentController.cs
+    2  Controllers/UtilisateurController.cs
+    2  Controllers/EnhancedAuthController.cs
+    1  Controllers/UpdatePermissionsController.cs
+    1  Controllers/MobileController.cs
+    1  Controllers/ControllerBaseExtensions.cs
+    1  Controllers/AdhesionController.cs
+
+Contrôleurs héritant de BaseApiController (pagination générique):
+  34 fichiers
+
+Usages CreatePaginatedResponseAsync / CreateExtendedPaginatedResponseAsync:
+  64 appels dans 33 fichiers
+
+Rapport détaillé: /Users/mac/Documents/Developpement/Projet Kansa/ProsocAPI/audit-reports/500-errors.csv

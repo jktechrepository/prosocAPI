@@ -1,0 +1,78 @@
+### Variables (adapter après login)
+@baseUrl = http://localhost:5000
+@token = {{login.response.body.accessToken}}
+
+### Login (exemple)
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "your-password"
+}
+
+### Liste des tarifs de cotisation
+GET {{baseUrl}}/api/TarifCotisation
+Authorization: Bearer {{token}}
+
+### Cotisations pour type F3 (id 2)
+GET {{baseUrl}}/api/TarifCotisation/type-adhesion/2
+Authorization: Bearer {{token}}
+
+### Calcul montant total : 5 USD/personne × 4 personnes (titulaire + 3 dépendants) = 20
+GET {{baseUrl}}/api/TarifCotisation/1/montant-total?nombreDependants=3
+Authorization: Bearer {{token}}
+
+### Tarifs applicables pour un affilié donné
+GET {{baseUrl}}/api/TarifCotisation/Affilie?idAffilie=3
+Authorization: Bearer {{token}}
+
+### Créer une cotisation mensuelle pour F3
+POST {{baseUrl}}/api/TarifCotisation
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "montant": 5.00,
+  "periodicite": "Mensuel",
+  "typeAdhesionId": 2,
+  "statut": true
+}
+
+### Exemple collecte COTISATION dans adhésion with-affilie
+# Montant = montantUnitaire × (1 + nombre de dépendants)
+# F3 avec 3 dépendants et cotisation 5/personne → montant = 20
+POST {{baseUrl}}/api/adhesion/with-affilie
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nom": "Test",
+  "prenom": "Cotisation",
+  "dateNaissance": "1990-01-15T00:00:00Z",
+  "telephone": "+243800000001",
+  "provinceResidence": "Kinshasa",
+  "statutDossier": "A",
+  "typeAdhesionId": 2,
+  "agentId": 1,
+  "collectes": [
+    {
+      "typeCollecte": "Cotisation",
+      "cotisationAffilieId": 1,
+      "montant": 20.00,
+      "mois": 5,
+      "annee": 2026,
+      "modePaiement": "ESPECE",
+      "referencePaiement": "REF-COT-001",
+      "statutPaiement": "OK",
+      "deviseId": 2,
+      "statut": true
+    }
+  ],
+  "dependants": [
+    { "nom": "Dep 1", "lienParente": "ENFANT", "dateNaissance": "2015-06-01T00:00:00Z" },
+    { "nom": "Dep 2", "lienParente": "ENFANT", "dateNaissance": "2018-03-10T00:00:00Z" },
+    { "nom": "Dep 3", "lienParente": "ENFANT", "dateNaissance": "2020-11-20T00:00:00Z" }
+  ]
+}

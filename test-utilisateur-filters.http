@@ -1,0 +1,27 @@
+@baseUrl = https://localhost:7116
+@auth_token = {{auth_token}}
+
+### 1) GET /api/Utilisateur/email?email=...
+GET {{baseUrl}}/api/Utilisateur/email?email=admin@example.com
+Authorization: Bearer {{auth_token}}
+
+### 2) GET /api/Utilisateur/role/{roleId}
+GET {{baseUrl}}/api/Utilisateur/role/2
+Authorization: Bearer {{auth_token}}
+
+### 3) GET /api/Utilisateur/statut/{statut}
+GET {{baseUrl}}/api/Utilisateur/statut/true
+Authorization: Bearer {{auth_token}}
+
+### 4) GET /api/Utilisateur/exists/{id}
+GET {{baseUrl}}/api/Utilisateur/exists/1
+Authorization: Bearer {{auth_token}}
+
+### 5) GET /api/Utilisateur/exists/email/{email}
+GET {{baseUrl}}/api/Utilisateur/exists/email/admin@example.com
+Authorization: Bearer {{auth_token}}
+
+### 6) GET /api/Utilisateur/societe/{idSociete}
+# NOTE: actuellement non supporté (IdSociete non présent dans les entités)
+GET {{baseUrl}}/api/Utilisateur/societe/1
+Authorization: Bearer {{auth_token}}

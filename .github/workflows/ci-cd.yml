@@ -1,0 +1,217 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  DOTNET_VERSION: '6.0.x'
+  NODE_VERSION: '18'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: prosoc_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release
+
+    - name: Run unit tests
+      run: |
+        dotnet test Prosoc.Tests.Unit/Prosoc.Tests.Unit.csproj \
+          --no-build --configuration Release \
+          --logger "trx;LogFileName=test_results.trx" \
+          --logger "console;verbosity=normal" \
+          --results-directory ./test-results \
+          --collect:"XPlat Code Coverage"
+
+    - name: Run integration tests
+      run: |
+        dotnet test Prosoc.Tests.Integration/Prosoc.Tests.Integration.csproj \
+          --no-build --configuration Release \
+          --logger "trx;LogFileName=integration_test_results.trx" \
+          --logger "console;verbosity=normal" \
+          --results-directory ./test-results \
+          --collect:"XPlat Code Coverage"
+      env:
+        ASPNETCORE_ENVIRONMENT: Testing
+        ConnectionStrings__DefaultConnection: Server=localhost;Port=3306;Database=prosoc_test;User=root;Password=root;
+
+    - name: Generate coverage report
+      run: |
+        dotnet tool install --global dotnet-reportgenerator-globaltool
+        reportgenerator -reports:**/coverage.cobertura.xml -targetdir:./coverage-report -reporttypes:Html;Cobertura
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: ./coverage-report
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results
+        path: ./test-results
+
+    - name: Publish coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage-report/Cobertura.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Run security scan
+      run: |
+        dotnet tool install --global dotnet-ef
+        dotnet ef database update --connection "Server=localhost;Port=3306;Database=prosoc_test;User=root;Password=root;" --project ProsocAPI
+        dotnet list package --outdated --include-prerelease
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Install Roslynator
+      run: dotnet tool install --global dotnet-roslynator
+
+    - name: Run Roslynator analysis
+      run: |
+        dotnet roslynator analyze ProsocAPI/ProsocAPI.csproj --severity-level info --output-format text
+
+    - name: Audit 500 error responses
+      run: |
+        chmod +x Scripts/audit-500-errors.sh
+        ./Scripts/audit-500-errors.sh
+
+    - name: Upload 500 error audit report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: audit-500-errors
+        path: |
+          audit-reports/500-errors.csv
+          audit-reports/500-errors-summary.txt
+
+    - name: Install StyleCop
+      run: dotnet tool install --global dotnet-stylecop
+
+    - name: Run StyleCop analysis
+      run: dotnet stylecop analyze ProsocAPI/ProsocAPI.csproj
+
+  deploy-staging:
+    needs: [build-and-test, security-scan, code-quality]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Build for deployment
+      run: dotnet publish ProsocAPI/ProsocAPI.csproj --configuration Release --output ./publish
+
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment..."
+        # Add your deployment commands here
+
+  deploy-production:
+    needs: [build-and-test, security-scan, code-quality]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Build for deployment
+      run: dotnet publish ProsocAPI/ProsocAPI.csproj --configuration Release --output ./publish
+
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production environment..."
+        # Add your deployment commands here
+
+  notify:
+    needs: [build-and-test, deploy-staging, deploy-production]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Notify on success
+      if: needs.build-and-test.result == 'success'
+      run: |
+        echo "✅ Build and tests passed successfully!"
+        # Add notification logic here (email, Slack, etc.)
+
+    - name: Notify on failure
+      if: needs.build-and-test.result == 'failure'
+      run: |
+        echo "❌ Build or tests failed!"
+        # Add notification logic here (email, Slack, etc.)

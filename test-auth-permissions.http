@@ -1,0 +1,57 @@
+### 🔐 TEST AUTHENTIFICATION - Vérification des Permissions
+### Utilisateur: admin@prosoc.cd
+### Mot de passe: Admin
+
+@baseUrl = http://localhost:5000
+@username = admin@prosoc.cd
+@password = Admin
+
+### 1. Test d'authentification avec EnhancedAuthController
+POST {{baseUrl}}/api/EnhancedAuth/authentifier
+Content-Type: application/json
+
+{
+  "emailOuTelephone": "{{username}}",
+  "motDePasse": "{{password}}"
+}
+
+### 2. Test d'authentification avec UtilisateurController (ancien endpoint)
+POST {{baseUrl}}/api/Utilisateur/authentifier
+Content-Type: application/json
+
+{
+  "emailOuTelephone": "{{username}}",
+  "motDePasse": "{{password}}"
+}
+
+### 3. Test avec superadmin@prosoc.cd
+POST {{baseUrl}}/api/EnhancedAuth/authentifier
+Content-Type: application/json
+
+{
+  "emailOuTelephone": "superadmin@prosoc.cd",
+  "motDePasse": "Super-Admin"
+}
+
+###############################################
+# RÉSULTATS ATTENDUS
+###############################################
+
+# Pour admin@prosoc.cd (RoleId = 2):
+# - Permissions attendues: users.read, users.write, roles.read, roles.write, 
+#   permissions.read, reports.read, financial.read, financial.write
+# - Total: 8 permissions
+
+# Pour superadmin@prosoc.cd (RoleId = 1):
+# - Permissions attendues: TOUTES (12 permissions)
+# - Incluant: system.admin
+
+###############################################
+# VÉRIFICATIONS DANS LES LOGS
+###############################################
+
+# Chercher dans les logs:
+# - "🔍 Récupération des permissions pour l'utilisateur"
+# - "✅ Rôles trouvés pour l'utilisateur"
+# - "✅ Permissions via rôles: X permissions trouvées"
+# - "✅ Total permissions uniques: X - [liste des permissions]"

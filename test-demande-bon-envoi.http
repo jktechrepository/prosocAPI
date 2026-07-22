@@ -1,0 +1,159 @@
+### Tests du Système de Demande de Bon d'Envoi
+@baseUrl = https://localhost:7116
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+### 1. Créer une demande de bon d'envoi (distance)
+POST {{baseUrl}}/api/demandebonenvoi
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "affilieId": 1,
+  "prestationId": 1,
+  "typeDemande": "DISTANCE",
+  "motifDemande": "Consultation générale demandée à distance",
+  "agentId": 1,
+  "observationAgent": "Client a appelé pour demande de consultation"
+}
+
+### 2. Créer une demande de bon d'envoi (présentiel)
+POST {{baseUrl}}/api/demandebonenvoi
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "affilieId": 2,
+  "prestationId": 2,
+  "typeDemande": "PRESENTIEL",
+  "motifDemande": "Client présent au siège pour examen spécialisé",
+  "agentId": 1,
+  "observationAgent": "Client reçu et demande validée en présentiel"
+}
+
+### 3. Vérifier l'éligibilité d'un affilié
+GET {{baseUrl}}/api/demandebonenvoi/verifier-eligibilite/1
+Authorization: Bearer {{token}}
+
+### 4. Récupérer les demandes en attente
+GET {{baseUrl}}/api/demandebonenvoi/en-attente
+Authorization: Bearer {{token}}
+
+### 5. Valider une demande et générer bon + jeton
+POST {{baseUrl}}/api/demandebonenvoi/valider-et-generer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idDemande": 1,
+  "hopitalPartenaireId": 1,
+  "observationGeneration": "Demande validée après vérification complète"
+}
+
+### 6. Récupérer les demandes validées
+GET {{baseUrl}}/api/demandebonenvoi/validees
+Authorization: Bearer {{token}}
+
+### 7. Récupérer les demandes rejetées
+GET {{baseUrl}}/api/demandebonenvoi/rejetees
+Authorization: Bearer {{token}}
+
+### 8. Récupérer les demandes d'un affilié (paginé)
+GET {{baseUrl}}/api/demandebonenvoi/by-affilie/1?pageNumber=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### 9. Récupérer une demande spécifique
+GET {{baseUrl}}/api/demandebonenvoi/1
+Authorization: Bearer {{token}}
+
+### 10. Récupérer toutes les demandes
+GET {{baseUrl}}/api/demandebonenvoi
+Authorization: Bearer {{token}}
+
+### 11. Récupérer les statistiques mensuelles
+GET {{baseUrl}}/api/demandebonenvoi/stats/2026-03-01
+Authorization: Bearer {{token}}
+
+### 12. Test de validation avec éligibilité négative
+GET {{baseUrl}}/api/demandebonenvoi/verifier-eligibilite/999
+Authorization: Bearer {{token}}
+
+### 13. Test de génération avec demande inexistante
+POST {{baseUrl}}/api/demandebonenvoi/valider-et-generer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idDemande": 999,
+  "hopitalPartenaireId": 1,
+  "observationGeneration": "Test avec demande inexistante"
+}
+
+### 14. Test de création avec données invalides
+POST {{baseUrl}}/api/demandebonenvoi
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "affilieId": 0,
+  "prestationId": 0,
+  "typeDemande": "INVALIDE",
+  "agentId": 0
+}
+
+### 15. Vérifier le workflow complet
+### 15.1 Créer demande
+POST {{baseUrl}}/api/demandebonenvoi
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "affilieId": 1,
+  "prestationId": 1,
+  "typeDemande": "DISTANCE",
+  "motifDemande": "Test workflow complet",
+  "agentId": 1
+}
+
+### 15.2 Vérifier éligibilité
+GET {{baseUrl}}/api/demandebonenvoi/verifier-eligibilite/1
+Authorization: Bearer {{token}}
+
+### 15.3 Valider et générer
+POST {{baseUrl}}/api/demandebonenvoi/valider-et-generer
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idDemande": 1,
+  "hopitalPartenaireId": 1,
+  "observationGeneration": "Workflow test complet"
+}
+
+### 15.4 Vérifier le bon créé
+GET {{baseUrl}}/api/bonenvoi/by-numero/BON123456
+Authorization: Bearer {{token}}
+
+### 15.5 Vérifier le jeton créé
+GET {{baseUrl}}/api/jetonmedical/1
+Authorization: Bearer {{token}}
+
+### 16. Test de validation de jeton par l'hôpital
+POST {{baseUrl}}/api/jetonmedical/valider
+Content-Type: application/json
+
+{
+  "codeJeton": "JETABC12345",
+  "hopitalPartenaireId": 1
+}
+
+### 17. Test d'utilisation du jeton
+POST {{baseUrl}}/api/jetonmedical/utiliser
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idJeton": 1,
+  "codeJeton": "JETABC12345",
+  "hopitalPartenaireId": 1,
+  "observationUtilisation": "Patient traité avec succès"
+}

@@ -1,0 +1,126 @@
+### Test API Affilie avec PhotoUrl
+
+# 1. Créer un affilié avec PhotoUrl
+POST {{baseUrl}}/api/affilie
+Content-Type: application/json
+
+{
+  "codeAdhesion": "AFF-001",
+  "nom": "KABONGO",
+  "prenom": "Jean Pierre",
+  "nomComplet": "Jean Pierre KABONGO",
+  "dateNaissance": "1990-05-15T00:00:00Z",
+  "telephone": "+243812345678",
+  "postnom": "Michel",
+  "provinceResidence": "Kinshasa",
+  "communeResidence": "Lemba",
+  "quartierResidence": "Salongo",
+  "avenueResidence": "By Pass",
+  "numeroResidence": "123",
+  "communeActivite": "Lemba",
+  "quartierActivite": "Salongo",
+  "avenueActivite": "By Pass",
+  "numeroActivite": "456",
+  "photoUrl": "https://example.com/photos/jean-pierre-kabongo.jpg",
+  "statut": true
+}
+
+###
+
+# 2. Mettre à jour un affilié avec PhotoUrl
+PUT {{baseUrl}}/api/affilie/1
+Content-Type: application/json
+
+{
+  "codeAdhesion": "AFF-001",
+  "nom": "KABONGO",
+  "prenom": "Jean Pierre",
+  "nomComplet": "Jean Pierre KABONGO",
+  "dateNaissance": "1990-05-15T00:00:00Z",
+  "telephone": "+243812345678",
+  "postnom": "Michel",
+  "provinceResidence": "Kinshasa",
+  "communeResidence": "Lemba",
+  "quartierResidence": "Salongo",
+  "avenueResidence": "By Pass",
+  "numeroResidence": "123",
+  "communeActivite": "Lemba",
+  "quartierActivite": "Salongo",
+  "avenueActivite": "By Pass",
+  "numeroActivite": "456",
+  "photoUrl": "https://example.com/photos/jean-pierre-kabongo-updated.jpg",
+  "statut": true
+}
+
+###
+
+# 3. Récupérer tous les affiliés (vérifier que PhotoUrl est inclus)
+GET {{baseUrl}}/api/affilie
+Content-Type: application/json
+
+###
+
+# 4. Récupérer un affilié spécifique (vérifier que PhotoUrl est inclus)
+GET {{baseUrl}}/api/affilie/1
+Content-Type: application/json
+
+###
+
+# 5. Créer un affilié sans PhotoUrl (devrait être null)
+POST {{baseUrl}}/api/affilie
+Content-Type: application/json
+
+{
+  "codeAdhesion": "AFF-002",
+  "nom": "MBUYU",
+  "prenom": "Marie",
+  "nomComplet": "Marie MBUYU",
+  "dateNaissance": "1985-08-20T00:00:00Z",
+  "telephone": "+243812345679",
+  "postnom": "Claire",
+  "provinceResidence": "Kinshasa",
+  "communeResidence": "Gombe",
+  "quartierResidence": "Kintambo",
+  "avenueResidence": "Lukusa",
+  "numeroResidence": "789",
+  "communeActivite": "Gombe",
+  "quartierActivite": "Kintambo",
+  "avenueActivite": "Lukusa",
+  "numeroActivite": "101",
+  "statut": true
+}
+
+###
+
+# 6. Tester avec une URL de photo plus longue (max 500 caractères)
+POST {{baseUrl}}/api/affilie
+Content-Type: application/json
+
+{
+  "codeAdhesion": "AFF-003",
+  "nom": "TSHILOMBO",
+  "prenom": "Paul",
+  "nomComplet": "Paul TSHILOMBO",
+  "dateNaissance": "1982-12-10T00:00:00Z",
+  "telephone": "+243812345680",
+  "postnom": "Antoine",
+  "provinceResidence": "Kinshasa",
+  "communeResidence": "Matete",
+  "quartierResidence": "Yolo",
+  "avenueResidence": "Maman Mobutu",
+  "numeroResidence": "202",
+  "communeActivite": "Matete",
+  "quartierActivite": "Yolo",
+  "avenueActivite": "Maman Mobutu",
+  "numeroActivite": "303",
+  "photoUrl": "https://storage.googleapis.com/prosoc-photos/affilies/2024/03/10/paul-tshilombo-professional-photo-high-resolution.jpg",
+  "statut": true
+}
+
+###
+
+# 7. Tester l'endpoint Adhesion pour vérifier que PhotoUrl est inclus dans Affilie
+GET {{baseUrl}}/api/adhesion/1
+Content-Type: application/json
+
+###

@@ -1,0 +1,16 @@
+{
+  "Cors": {
+    "AllowedOrigins": [
+      "https://testprosoc.kansaconsulting.com",
+      "https://www.testprosoc.kansaconsulting.com",
+      "https://prosoc.kansaconsulting.com",
+      "https://www.prosoc.kansaconsulting.com"
+    ]
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}

@@ -1,0 +1,256 @@
+### Tests du Système de Retrait Agent
+@baseUrl = https://localhost:7116
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+### 1. Vérifier la période de retrait (jour autorisé)
+POST {{baseUrl}}/api/retraitagent/verifier-periode
+Content-Type: application/json
+
+"2026-03-16"
+
+### 2. Vérifier la période de retrait (jour non autorisé)
+POST {{baseUrl}}/api/retraitagent/verifier-periode
+Content-Type: application/json
+
+"2026-03-10"
+
+### 3. Vérifier le solde disponible
+POST {{baseUrl}}/api/retraitagent/verifier-solde
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "agentId": 1,
+  "montantDemande": 50000
+}
+
+### 4. Créer une demande de retrait (période autorisée)
+POST {{baseUrl}}/api/retraitagent
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "agentId": 1,
+  "montantDemande": 50000,
+  "typeRetrait": "PARTIEL",
+  "motifRetrait": "Frais de scolarité des enfants"
+}
+
+### 5. Créer une demande de retrait (montant trop élevé)
+POST {{baseUrl}}/api/retraitagent
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "agentId": 1,
+  "montantDemande": 500000,
+  "typeRetrait": "TOTAL",
+  "motifRetrait": "Retrait complet du salaire"
+}
+
+### 6. Récupérer les demandes en attente
+GET {{baseUrl}}/api/retraitagent/en-attente
+Authorization: Bearer {{token}}
+
+### 7. Récupérer les demandes d'un agent spécifique
+GET {{baseUrl}}/api/retraitagent/by-agent/1
+Authorization: Bearer {{token}}
+
+### 8. Valider une demande et générer le jeton
+POST {{baseUrl}}/api/retraitagent/valider-et-generer-jeton
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idDemande": 1,
+  "agentValidationId": 2,
+  "statutDemande": "VALIDEE"
+}
+
+### 9. Récupérer les demandes validées
+GET {{baseUrl}}/api/retraitagent/validees
+Authorization: Bearer {{token}}
+
+### 10. Récupérer une demande spécifique avec jeton
+GET {{baseUrl}}/api/retraitagent/1
+Authorization: Bearer {{token}}
+
+### 11. Utiliser le jeton de retrait (bureau de la mutuelle)
+POST {{baseUrl}}/api/retraitagent/utiliser-jeton
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idJeton": 1,
+  "codeJeton": "JRTA1B2C3D",
+  "agentId": 1,
+  "observationUtilisation": "Retrait effectué avec succès au bureau principal"
+}
+
+### 12. Récupérer les demandes traitées
+GET {{baseUrl}}/api/retraitagent/traitees
+Authorization: Bearer {{token}}
+
+### 13. Récupérer toutes les demandes
+GET {{baseUrl}}/api/retraitagent
+Authorization: Bearer {{token}}
+
+### 14. Mettre à jour le statut d'une demande (rejet)
+PUT {{baseUrl}}/api/retraitagent/2
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idDemande": 2,
+  "statutDemande": "REJETEE",
+  "motifValidation": "Solde insuffisant",
+  "agentValidationId": 2
+}
+
+### 15. Récupérer les demandes rejetées
+GET {{baseUrl}}/api/retraitagent/by-statut/REJETEE
+Authorization: Bearer {{token}}
+
+### 16. Récupérer les statistiques mensuelles
+GET {{baseUrl}}/api/retraitagent/stats/2026-03-01
+Authorization: Bearer {{token}}
+
+### 17. Test de validation de jeton invalide
+POST {{baseUrl}}/api/retraitagent/utiliser-jeton
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idJeton": 999,
+  "codeJeton": "JRTINVALID",
+  "agentId": 1,
+  "observationUtilisation": "Test de jeton invalide"
+}
+
+### 18. Test de création avec données invalides
+POST {{baseUrl}}/api/retraitagent
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "agentId": 0,
+  "montantDemande": -1000,
+  "typeRetrait": "",
+  "motifRetrait": ""
+}
+
+### 19. Test de workflow complet
+### 19.1 Vérifier période
+POST {{baseUrl}}/api/retraitagent/verifier-periode
+Content-Type: application/json
+
+"2026-03-16"
+
+### 19.2 Vérifier solde
+POST {{baseUrl}}/api/retraitagent/verifier-solde
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "agentId": 1,
+  "montantDemande": 75000
+}
+
+### 19.3 Créer demande
+POST {{baseUrl}}/api/retraitagent
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "agentId": 1,
+  "montantDemande": 75000,
+  "typeRetrait": "PARTIEL",
+  "motifRetrait": "Dépenses urgentes familiales"
+}
+
+### 19.4 Valider et générer jeton
+POST {{baseUrl}}/api/retraitagent/valider-et-generer-jeton
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idDemande": 3,
+  "agentValidationId": 2,
+  "statutDemande": "VALIDEE"
+}
+
+### 19.5 Utiliser le jeton
+POST {{baseUrl}}/api/retraitagent/utiliser-jeton
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idJeton": 3,
+  "codeJeton": "JRTX9Y8Z7W",
+  "agentId": 1,
+  "observationUtilisation": "Retrait finalisé avec succès"
+}
+
+### 19.6 Vérifier le solde après retrait
+POST {{baseUrl}}/api/retraitagent/verifier-solde
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "agentId": 1,
+  "montantDemande": 10000
+}
+
+### 20. Test de période non autorisée
+POST {{baseUrl}}/api/retraitagent/verifier-periode
+Content-Type: application/json
+
+"2026-03-25"
+
+### 21. Créer une demande en période non autorisée (devrait échouer)
+POST {{baseUrl}}/api/retraitagent
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "agentId": 1,
+  "montantDemande": 25000,
+  "typeRetrait": "PARTIEL",
+  "motifRetrait": "Tentative hors période"
+}
+
+### 22. Test de retrait total
+POST {{baseUrl}}/api/retraitagent
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "agentId": 1,
+  "montantDemande": 100000,
+  "typeRetrait": "TOTAL",
+  "motifRetrait": "Retrait total pour projet personnel"
+}
+
+### 23. Test de suppression d'une demande
+DELETE {{baseUrl}}/api/retraitagent/4
+Authorization: Bearer {{token}}
+
+### 24. Test de récupération des demandes par statut multiple
+GET {{baseUrl}}/api/retraitagent/by-statut/EN_ATTENTE
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/retraitagent/by-statut/VALIDEE
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/retraitagent/by-statut/TRAITEE
+Authorization: Bearer {{token}}
+
+### 25. Test de statistiques sur plusieurs mois
+GET {{baseUrl}}/api/retraitagent/stats/2026-01-01
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/retraitagent/stats/2026-02-01
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/api/retraitagent/stats/2026-03-01
+Authorization: Bearer {{token}}

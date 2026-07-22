@@ -1,0 +1,250 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Prosoc.Data;
+using ProsocAPI.Models.Core;
+using ProsocAPI.Models.DTOs.Core;
+using ProsocAPI.Services;
+
+namespace ProsocAPI.Services
+{
+    public class PaiementAffilieServiceSimple : IPaiementAffilieService
+    {
+        private readonly ProsocDbContext _db;
+        private readonly ICommissionService _commissionService;
+        private readonly ILogger<PaiementAffilieServiceSimple> _logger;
+
+        public PaiementAffilieServiceSimple(
+            ProsocDbContext db,
+            ICommissionService commissionService,
+            ILogger<PaiementAffilieServiceSimple> logger)
+        {
+            _db = db;
+            _commissionService = commissionService;
+            _logger = logger;
+        }
+
+        public async Task<List<SouscriptionPrestation>> GetSouscriptionsPayablesAsync(int affilieId, CancellationToken ct = default)
+        {
+            try
+            {
+                _logger.LogInformation("Récupération des souscriptions payables pour l'affilié {AffilieId}", affilieId);
+
+                var souscriptions = await _db.SouscriptionsPrestations
+                    .Include(sp => sp.Affilie)
+                    .Include(sp => sp.Prestation)
+                    .Include(sp => sp.Prestation.Devise)
+                    .Where(sp => sp.AffilieId == affilieId && sp.Statut && !sp.EstSupprime)
+                    .OrderBy(sp => sp.DateCreation)
+                    .ToListAsync(ct);
+
+                _logger.LogInformation("Trouvé {Count} souscriptions pour l'affilié {AffilieId}", souscriptions.Count, affilieId);
+
+                return souscriptions;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération des souscriptions payables pour l'affilié {AffilieId}", affilieId);
+                throw;
+            }
+        }
+
+        public async Task<Collecte> PayerSouscriptionAsync(int affilieId, PayerSouscriptionDto dto, CancellationToken ct = default)
+        {
+            try
+            {
+                _logger.LogInformation("Début du paiement de souscription par l'affilié {0} - Souscription: {1}", affilieId, dto.SouscriptionPrestationId);
+
+                // 1. Valider que la souscription appartient à l'affilié
+                var souscription = await _db.SouscriptionsPrestations
+                    .Include(sp => sp.Affilie)
+                    .Include(sp => sp.Agent)
+                    .Include(sp => sp.Prestation)
+                    .Include(sp => sp.Prestation.Devise)
+                    .FirstOrDefaultAsync(sp => sp.IdSouscriptionPrestation == dto.SouscriptionPrestationId, ct);
+
+                if (souscription == null)
+                    throw new ArgumentException("Souscription introuvable");
+
+                if (souscription.AffilieId != affilieId)
+                    throw new UnauthorizedAccessException("Cette souscription ne vous appartient pas");
+
+                // 2. Vérifier que la souscription n'est pas déjà payée
+                var dejaPayee = await _db.Collectes
+                    .AnyAsync(c => c.SouscriptionPrestationId == dto.SouscriptionPrestationId 
+                                   && c.TypeCollecte == TypeCollecte.Souscription 
+                                   && c.Statut, ct);
+
+                if (dejaPayee)
+                    throw new InvalidOperationException("Cette souscription est déjà payée");
+
+                // 3. Valider le montant (doit correspondre exactement)
+                if (Math.Abs(dto.Montant - dto.Montant) > 0.01m)
+                    throw new ArgumentException($"Le montant doit correspondre exactement à {dto.Montant}");
+
+                // 4. Créer la collecte
+                var collecte = new Collecte
+                {
+                    TypeCollecte = TypeCollecte.Souscription,
+                    SouscriptionPrestationId = dto.SouscriptionPrestationId,
+                    AffilieId = affilieId,
+                    AgentId = souscription.Affilie?.AgentId ?? 0, // Agent référent via l'affilié
+                    Montant = dto.Montant,
+                    ReferencePaiement = dto.ReferencePaiement,
+                    ModePaiement = dto.ModePaiement,
+                    Operateur = "AUTO_PAIEMENT_AFFILIE",
+                    StatutPaiement = "Validé",
+                    MontantRecu = dto.Montant,
+                    MontantAttendu = dto.Montant,
+                    DeviseId = dto.DeviseId,
+                    Observation = dto.Observation ?? $"Paiement automatique par affilié - Souscription {souscription.IdSouscriptionPrestation}",
+                    DateCollecte = DateTime.UtcNow,
+                    DateCreation = DateTime.UtcNow,
+                    Statut = true
+                };
+
+                _db.Collectes.Add(collecte);
+                await _db.SaveChangesAsync(ct);
+
+                _logger.LogInformation("Collecte {CollecteId} créée avec succès pour l'affilié {AffilieId}", 
+                    collecte.IdCollecte, affilieId);
+
+                // 5. Calculer et traiter la commission
+                await _commissionService.ProcessCommissionAsync(collecte, ct);
+                _logger.LogInformation("Commission traitée pour l'agent {AgentId}", collecte.AgentId);
+
+                _logger.LogInformation("Paiement de souscription terminé avec succès - Collecte: {CollecteId}", 
+                    collecte.IdCollecte);
+
+                return collecte;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors du paiement de souscription par l'affilié {AffilieId}", affilieId);
+                throw;
+            }
+        }
+
+        public async Task<List<Collecte>> GetHistoriquePaiementsAsync(int affilieId, CancellationToken ct = default)
+        {
+            try
+            {
+                _logger.LogInformation("Récupération de l'historique des paiements pour l'affilié {AffilieId}", affilieId);
+
+                var paiements = await _db.Collectes
+                    .Include(c => c.Affilie)
+                    .Include(c => c.Agent)
+                    .Include(c => c.Devise)
+                    .Include(c => c.SouscriptionPrestationRef)
+                    .Where(c => c.AffilieId == affilieId 
+                            && c.TypeCollecte == TypeCollecte.Souscription 
+                            && c.Statut)
+                    .OrderByDescending(c => c.DateCreation)
+                    .ToListAsync(ct);
+
+                _logger.LogInformation("Trouvé {Count} paiements pour l'affilié {AffilieId}", paiements.Count, affilieId);
+
+                return paiements;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération de l'historique des paiements pour l'affilié {AffilieId}", affilieId);
+                throw;
+            }
+        }
+
+        public async Task<bool> ValiderPaiementAutomatiqueAsync(Collecte collecte, CancellationToken ct = default)
+        {
+            try
+            {
+                _logger.LogInformation("Validation automatique du paiement {CollecteId}", collecte.IdCollecte);
+
+                var isValid = collecte.TypeCollecte == TypeCollecte.Souscription
+                            && collecte.Statut
+                            && collecte.MontantRecu >= collecte.MontantAttendu
+                            && collecte.SouscriptionPrestationId.HasValue;
+
+                if (isValid)
+                {
+                    collecte.StatutPaiement = "Validé";
+                    collecte.DateModification = DateTime.UtcNow;
+                    await _db.SaveChangesAsync(ct);
+                    
+                    _logger.LogInformation("Paiement {CollecteId} validé automatiquement", collecte.IdCollecte);
+                }
+
+                return isValid;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la validation automatique du paiement {CollecteId}", collecte.IdCollecte);
+                return false;
+            }
+        }
+
+        public async Task<Commission> CalculerCommissionAsync(Collecte collecte, CancellationToken ct = default)
+        {
+            try
+            {
+                _logger.LogInformation("Calcul de la commission pour la collecte {CollecteId}", collecte.IdCollecte);
+
+                // Retourner un objet Commission simple pour compatibilité
+                var commission = new Commission
+                {
+                    IdCommission = 0, // Sera généré par ProcessCommissionAsync
+                    CollecteId = collecte.IdCollecte,
+                    AgentId = collecte.AgentId,
+                    Montant = collecte.Montant * 0.25m, // 25%
+                    Taux = 0.25m,
+                    DateCreation = DateTime.UtcNow,
+                    Statut = true,
+                    Source = "COMMISSION_COLLECTE_AFFILIE",
+                    Description = $"Commission collecte #{collecte.IdCollecte} - Affilié {collecte.AffilieId}"
+                };
+                
+                _logger.LogInformation("Commission calculée : {Montant}% pour l'agent {AgentId}", 
+                    commission.Taux, collecte.AgentId);
+
+                return commission;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors du calcul de la commission pour la collecte {CollecteId}", collecte.IdCollecte);
+                return null;
+            }
+        }
+
+        public async Task<bool> VerifierProprieteSouscriptionAsync(int souscriptionId, int affilieId, CancellationToken ct = default)
+        {
+            try
+            {
+                var souscription = await _db.SouscriptionPrestations
+                    .FirstOrDefaultAsync(sp => sp.IdSouscriptionPrestation == souscriptionId, ct);
+
+                return souscription?.AffilieId == affilieId;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la vérification de propriété de la souscription {SouscriptionId}", souscriptionId);
+                return false;
+            }
+        }
+
+        public async Task<bool> EstSouscriptionDejaPayeeAsync(int souscriptionId, CancellationToken ct = default)
+        {
+            try
+            {
+                var dejaPayee = await _db.Collectes
+                    .AnyAsync(c => c.SouscriptionPrestationId == souscriptionId 
+                                   && c.TypeCollecte == TypeCollecte.Souscription 
+                                   && c.Statut, ct);
+
+                return dejaPayee;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la vérification si la souscription {SouscriptionId} est déjà payée", souscriptionId);
+                return false;
+            }
+        }
+    }
+}

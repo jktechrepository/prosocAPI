@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  prosoc-api:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80;https://+:443
+      - Logging__LogLevel__Default=Debug
+      - Logging__LogLevel__Microsoft=Information
+      - Logging__LogLevel__Microsoft.Hosting.Lifetime=Information
+    volumes:
+      - .:/src
+      - ~/.nuget/packages:/root/.nuget/packages
+    ports:
+      - "5000:80"
+      - "5001:443"
+    command: ["dotnet", "watch", "run"]
+
+  prosoc-db:
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=prosoc_dev
+    ports:
+      - "3306:3306"
+    volumes:
+      - prosoc-db-dev-data:/var/lib/mysql
+      - ./database/init-dev:/docker-entrypoint-initdb.d
+
+  prosoc-redis:
+    ports:
+      - "6379:6379"
+    volumes:
+      - prosoc-redis-dev-data:/data
+
+volumes:
+  prosoc-db-dev-data:
+    driver: local
+  prosoc-redis-dev-data:
+    driver: local

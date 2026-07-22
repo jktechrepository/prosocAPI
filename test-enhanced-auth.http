@@ -1,0 +1,215 @@
+### Test de l'API Prosoc avec Authentification Améliorée
+### Inspiré de Kenergie API Documentation
+
+@baseUrl = https://localhost:7116
+@contentType = application/json
+
+### 1. Test Endpoint Public (vérifie que l'API fonctionne)
+GET {{baseUrl}}/api/authtest/public
+Content-Type: {{contentType}}
+
+###
+
+### 2. Login avec Email (nouveau format multi-canal)
+POST {{baseUrl}}/api/enhancedauth/login
+Content-Type: {{contentType}}
+
+{
+  "emailOuTelephone": "superadmin@prosoc.cd",
+  "motDePasse": "Super-Admin",
+  "fcmToken": "test_fcm_token_123",
+  "deviceType": "Web",
+  "deviceModel": "Chrome Browser",
+  "osVersion": "Windows 10",
+  "deviceInfo": "Test Device - Chrome on Windows"
+}
+
+###
+
+### 3. Login avec Nom d'utilisateur (ancien format compatible)
+POST {{baseUrl}}/api/enhancedauth/login
+Content-Type: {{contentType}}
+
+{
+  "emailOuTelephone": "superadmin",
+  "motDePasse": "Super-Admin",
+  "fcmToken": "test_fcm_token_456",
+  "deviceType": "Mobile",
+  "deviceModel": "iPhone 14",
+  "osVersion": "iOS 16.0",
+  "deviceInfo": "Test Device - iPhone 14"
+}
+
+###
+
+### 4. Login avec Admin
+POST {{baseUrl}}/api/enhancedauth/login
+Content-Type: {{contentType}}
+
+{
+  "emailOuTelephone": "admin@prosoc.cd",
+  "motDePasse": "Admin",
+  "fcmToken": "admin_fcm_token",
+  "deviceType": "Web",
+  "deviceModel": "Firefox",
+  "osVersion": "macOS Sonoma",
+  "deviceInfo": "Admin Device - Firefox on macOS"
+}
+
+###
+
+### 5. Test Endpoint Protégé avec JWT Token
+# Remplacer {{accessToken}} par le token obtenu du login
+GET {{baseUrl}}/api/authtest/protected
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+###
+
+### 6. Test Endpoint Admin Only
+GET {{baseUrl}}/api/authtest/admin-only
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+###
+
+### 7. Test Endpoint Super Admin Only
+GET {{baseUrl}}/api/authtest/super-admin-only
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+###
+
+### 8. Test Token Info (affiche les claims JWT)
+GET {{baseUrl}}/api/authtest/token-info
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+###
+
+### 9. Refresh Token
+# Remplacer {{refreshToken}} par le refresh token obtenu du login
+POST {{baseUrl}}/api/enhancedauth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "{{refreshToken}}",
+  "deviceInfo": "Refreshed Device - Updated Info"
+}
+
+###
+
+### 10. Logout (révoque tous les tokens)
+POST {{baseUrl}}/api/enhancedauth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+###
+
+### 11. Test Endpoint Permissions
+GET {{baseUrl}}/api/authtest/permissions
+Authorization: Bearer {{accessToken}}
+Content-Type: {{contentType}}
+
+###
+
+### 12. Test avec ancien endpoint AuthController (compatibilité)
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "nomUtilisateur": "superadmin",
+  "motDePasse": "Super-Admin",
+  "fcmToken": "old_format_fcm",
+  "deviceType": "Web",
+  "deviceModel": "Safari",
+  "osVersion": "macOS"
+}
+
+###
+
+### 13. Test login échoué (mauvais mot de passe)
+POST {{baseUrl}}/api/enhancedauth/login
+Content-Type: {{contentType}}
+
+{
+  "emailOuTelephone": "superadmin@prosoc.cd",
+  "motDePasse": "WrongPassword",
+  "fcmToken": "test_token"
+}
+
+###
+
+### 14. Test login échoué (utilisateur inexistant)
+POST {{baseUrl}}/api/enhancedauth/login
+Content-Type: {{contentType}}
+
+{
+  "emailOuTelephone": "nonexistent@prosoc.cd",
+  "motDePasse": "SomePassword",
+  "fcmToken": "test_token"
+}
+
+###
+
+### 15. Test refresh token invalide
+POST {{baseUrl}}/api/enhancedauth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "invalid_refresh_token_12345",
+  "deviceInfo": "Invalid Test"
+}
+
+###
+
+### 16. Test endpoint protégé sans token (devrait échouer)
+GET {{baseUrl}}/api/authtest/protected
+Content-Type: {{contentType}}
+
+###
+
+### 17. Test endpoint admin-only avec token utilisateur normal (devrait échouer)
+# Utiliser le token d'un utilisateur qui n'est pas admin
+GET {{baseUrl}}/api/authtest/admin-only
+Authorization: Bearer {{userAccessToken}}
+Content-Type: {{contentType}}
+
+###
+
+### 18. Test avec numéro de téléphone (format futur)
+POST {{baseUrl}}/api/enhancedauth/login
+Content-Type: {{contentType}}
+
+{
+  "emailOuTelephone": "+243812345678",
+  "motDePasse": "Super-Admin",
+  "fcmToken": "phone_test_token",
+  "deviceType": "Mobile",
+  "deviceModel": "Android Phone",
+  "osVersion": "Android 13",
+  "deviceInfo": "Phone Login Test"
+}
+
+###
+
+### 19. Test format email invalide
+POST {{baseUrl}}/api/enhancedauth/login
+Content-Type: {{contentType}}
+
+{
+  "emailOuTelephone": "invalid-email-format",
+  "motDePasse": "Super-Admin",
+  "fcmToken": "test_token"
+}
+
+###
+
+### 20. Test refresh token expiré (simulé)
+POST {{baseUrl}}/api/enhancedauth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "expired_token_simulation",
+  "deviceInfo": "Expired Token Test"
+}

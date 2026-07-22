@@ -1,0 +1,333 @@
+### 🧪 TEST DE VALIDATION VIRTUAL ACCOUNT - SOLDE VIRTUEL
+
+# ============================================
+# Test 1: VIRTUAL_ACCOUNT avec solde suffisant
+# ============================================
+POST {{baseUrl}}/api/Adhesion/with-affilie
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "Nom": "Test",
+  "Prenom": "Virtual",
+  "Postnom": "Account",
+  "DateNaissance": "1990-01-01",
+  "Telephone": "0123456789",
+  "EmailAffilie": "test.virtual@prosoc.cd",
+  "ProvinceResidence": "Kinshasa",
+  "CommuneResidence": "Lemba",
+  "QuartierResidence": "Salongo",
+  "AvenueResidence": "ByPass",
+  "NumeroResidence": "123",
+  "StatutDossier": "COMPLET",
+  "TypeAdhesionId": 1,
+  "AgentId": 1,
+  "AffilieStatut": true,
+  "AdhesionStatut": true,
+  "Collectes": [
+    {
+      "TypeCollecte": "Souscription",
+      "Montant": 50,
+      "Mois": 3,
+      "Annee": 2026,
+      "ModePaiement": "VIRTUAL_ACCOUNT",
+      "DeviseId": 1,
+      "Statut": true,
+      "Souscription": {
+        "PrestationId": 1
+      }
+    }
+  ],
+  "Dependants": [],
+  "Antecedants": []
+}
+
+> {%
+client.test("VIRTUAL_ACCOUNT - Solde suffisant", function() {
+    client.assert(response.status === 201 || response.status === 400, "Status should be 201 (success) or 400 (validation error)");
+    
+    if (response.status === 201) {
+        client.assert(response.body.success !== false, "Adhésion should be created successfully");
+        console.log("✅ Test 1: VIRTUAL_ACCOUNT avec solde suffisant - SUCCÈS");
+    } else {
+        const responseBody = response.body;
+        if (responseBody.error && responseBody.error.message && responseBody.error.message.includes("Solde virtuel insuffisant")) {
+            console.log("⚠️ Test 1: VIRTUAL_ACCOUNT - Solde insuffisant (normal si wallet vide)");
+        } else if (responseBody.error && responseBody.error.message && responseBody.error.message.includes("Aucun wallet virtuel")) {
+            console.log("⚠️ Test 1: VIRTUAL_ACCOUNT - Wallet virtuel inexistant (normal pour premier test)");
+        } else {
+            console.log("❌ Test 1: Erreur inattendue:", responseBody.error?.message || responseBody.message);
+        }
+    }
+});
+%}
+
+###
+
+# ============================================
+# Test 2: VIRTUAL_ACCOUNT avec montant trop élevé
+# ============================================
+POST {{baseUrl}}/api/Adhesion/with-affilie
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "Nom": "Test",
+  "Prenom": "High",
+  "Postnom": "Amount",
+  "DateNaissance": "1990-01-01",
+  "Telephone": "0123456780",
+  "EmailAffilie": "test.high@prosoc.cd",
+  "ProvinceResidence": "Kinshasa",
+  "CommuneResidence": "Lemba",
+  "QuartierResidence": "Salongo",
+  "AvenueResidence": "ByPass",
+  "NumeroResidence": "124",
+  "StatutDossier": "COMPLET",
+  "TypeAdhesionId": 1,
+  "AgentId": 1,
+  "AffilieStatut": true,
+  "AdhesionStatut": true,
+  "Collectes": [
+    {
+      "TypeCollecte": "Souscription",
+      "Montant": 999999,
+      "Mois": 3,
+      "Annee": 2026,
+      "ModePaiement": "VIRTUAL_ACCOUNT",
+      "DeviseId": 1,
+      "Statut": true,
+      "Souscription": {
+        "PrestationId": 1
+      }
+    }
+  ],
+  "Dependants": [],
+  "Antecedants": []
+}
+
+> {%
+client.test("VIRTUAL_ACCOUNT - Montant trop élevé", function() {
+    client.assert(response.status === 400, "Status should be 400 (validation error)");
+    
+    const responseBody = response.body;
+    if (responseBody.error && responseBody.error.message) {
+        const errorMessage = responseBody.error.message;
+        if (errorMessage.includes("Solde virtuel insuffisant")) {
+            console.log("✅ Test 2: VIRTUAL_ACCOUNT - Validation solde insuffisant - SUCCÈS");
+        } else if (errorMessage.includes("Aucun wallet virtuel")) {
+            console.log("✅ Test 2: VIRTUAL_ACCOUNT - Validation wallet inexistant - SUCCÈS");
+        } else {
+            console.log("⚠️ Test 2: Erreur de validation différente:", errorMessage);
+        }
+    } else {
+        console.log("❌ Test 2: Erreur inattendue");
+    }
+});
+%}
+
+###
+
+# ============================================
+# Test 3: VIRTUAL_ACCOUNT sans wallet virtuel (agent sans wallet)
+# ============================================
+POST {{baseUrl}}/api/Adhesion/with-affilie
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "Nom": "Test",
+  "Prenom": "No",
+  "Postnom": "Wallet",
+  "DateNaissance": "1990-01-01",
+  "Telephone": "0123456781",
+  "EmailAffilie": "test.nowallet@prosoc.cd",
+  "ProvinceResidence": "Kinshasa",
+  "CommuneResidence": "Lemba",
+  "QuartierResidence": "Salongo",
+  "AvenueResidence": "ByPass",
+  "NumeroResidence": "125",
+  "StatutDossier": "COMPLET",
+  "TypeAdhesionId": 1,
+  "AgentId": 999, // Agent qui probablement n'existe pas ou n'a pas de wallet
+  "AffilieStatut": true,
+  "AdhesionStatut": true,
+  "Collectes": [
+    {
+      "TypeCollecte": "Souscription",
+      "Montant": 50,
+      "Mois": 3,
+      "Annee": 2026,
+      "ModePaiement": "VIRTUAL_ACCOUNT",
+      "DeviseId": 1,
+      "Statut": true,
+      "Souscription": {
+        "PrestationId": 1
+      }
+    }
+  ],
+  "Dependants": [],
+  "Antecedants": []
+}
+
+> {%
+client.test("VIRTUAL_ACCOUNT - Agent sans wallet", function() {
+    client.assert(response.status === 400, "Status should be 400 (validation error)");
+    
+    const responseBody = response.body;
+    if (responseBody.error && responseBody.error.message) {
+        const errorMessage = responseBody.error.message;
+        if (errorMessage.includes("Aucun wallet virtuel") || errorMessage.includes("non trouvé")) {
+            console.log("✅ Test 3: VIRTUAL_ACCOUNT - Validation wallet inexistant - SUCCÈS");
+        } else {
+            console.log("⚠️ Test 3: Erreur différente:", errorMessage);
+        }
+    } else {
+        console.log("❌ Test 3: Erreur inattendue");
+    }
+});
+%}
+
+###
+
+# ============================================
+# Test 4: Mode de paiement normal (ESPECE) - doit fonctionner
+# ============================================
+POST {{baseUrl}}/api/Adhesion/with-affilie
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "Nom": "Test",
+  "Prenom": "Normal",
+  "Postnom": "Payment",
+  "DateNaissance": "1990-01-01",
+  "Telephone": "0123456782",
+  "EmailAffilie": "test.normal@prosoc.cd",
+  "ProvinceResidence": "Kinshasa",
+  "CommuneResidence": "Lemba",
+  "QuartierResidence": "Salongo",
+  "AvenueResidence": "ByPass",
+  "NumeroResidence": "126",
+  "StatutDossier": "COMPLET",
+  "TypeAdhesionId": 1,
+  "AgentId": 1,
+  "AffilieStatut": true,
+  "AdhesionStatut": true,
+  "Collectes": [
+    {
+      "TypeCollecte": "Souscription",
+      "Montant": 100,
+      "Mois": 3,
+      "Annee": 2026,
+      "ModePaiement": "ESPECE",
+      "DeviseId": 1,
+      "ReferencePaiement": "TEST-ESP-001",
+      "Statut": true,
+      "Souscription": {
+        "PrestationId": 1
+      }
+    }
+  ],
+  "Dependants": [],
+  "Antecedants": []
+}
+
+> {%
+client.test("ESPECE - Paiement normal", function() {
+    client.assert(response.status === 201 || response.status === 400, "Status should be 201 (success) or 400 (other validation)");
+    
+    if (response.status === 201) {
+        console.log("✅ Test 4: ESPECE - Paiement normal - SUCCÈS");
+    } else {
+        const responseBody = response.body;
+        console.log("⚠️ Test 4: ESPECE - Erreur (peut être normale):", responseBody.error?.message || responseBody.message);
+    }
+});
+%}
+
+###
+
+# ============================================
+# Test 5: Vérifier le solde d'un agent
+# ============================================
+GET {{baseUrl}}/api/WalletVirtuelAgent/solde/1
+Authorization: Bearer {{token}}
+
+> {%
+client.test("Vérification solde wallet virtuel", function() {
+    if (response.status === 200) {
+        const solde = response.body;
+        console.log("💰 Solde wallet virtuel agent 1:", solde);
+        console.log("✅ Test 5: Vérification solde - SUCCÈS");
+    } else if (response.status === 404) {
+        console.log("⚠️ Test 5: Wallet virtuel non trouvé pour l'agent 1");
+    } else {
+        console.log("❌ Test 5: Erreur lors de la vérification du solde");
+    }
+});
+%}
+
+###
+
+# ============================================
+# Test 6: Mode de paiement invalide
+# ============================================
+POST {{baseUrl}}/api/Adhesion/with-affilie
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "Nom": "Test",
+  "Prenom": "Invalid",
+  "Postnom": "Mode",
+  "DateNaissance": "1990-01-01",
+  "Telephone": "0123456783",
+  "EmailAffilie": "test.invalid@prosoc.cd",
+  "ProvinceResidence": "Kinshasa",
+  "CommuneResidence": "Lemba",
+  "QuartierResidence": "Salongo",
+  "AvenueResidence": "ByPass",
+  "NumeroResidence": "127",
+  "StatutDossier": "COMPLET",
+  "TypeAdhesionId": 1,
+  "AgentId": 1,
+  "AffilieStatut": true,
+  "AdhesionStatut": true,
+  "Collectes": [
+    {
+      "TypeCollecte": "Souscription",
+      "Montant": 50,
+      "Mois": 3,
+      "Annee": 2026,
+      "ModePaiement": "INVALID_MODE",
+      "DeviseId": 1,
+      "Statut": true,
+      "Souscription": {
+        "PrestationId": 1
+      }
+    }
+  ],
+  "Dependants": [],
+  "Antecedants": []
+}
+
+> {%
+client.test("Mode de paiement invalide", function() {
+    client.assert(response.status === 400, "Status should be 400 (validation error)");
+    
+    const responseBody = response.body;
+    if (responseBody.error && responseBody.error.message) {
+        const errorMessage = responseBody.error.message;
+        if (errorMessage.includes("Mode de paiement invalide")) {
+            console.log("✅ Test 6: Mode de paiement invalide - SUCCÈS");
+        } else {
+            console.log("⚠️ Test 6: Erreur différente:", errorMessage);
+        }
+    } else {
+        console.log("❌ Test 6: Erreur inattendue");
+    }
+});
+%}
+
+###

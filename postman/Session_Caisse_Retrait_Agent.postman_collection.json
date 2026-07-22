@@ -1,0 +1,325 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Prosoc — Session Caisse + Retrait Agent",
+    "description": "Flux complet : ouverture session caisse → paiement jeton retrait.\n\nVoir aussi GUIDE_SESSION_CAISSE_RETRAIT_POSTMAN.md\n\n1. Renseigner les variables d'environnement (baseUrl, tokens, agentId).\n2. Partie A si jeton déjà validé ; Partie B pour le scénario de zéro.\n3. Partie C en fin de journée.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://dev-prosoc.asdc-rdc.org" },
+    { "key": "tokenCaissier", "value": "" },
+    { "key": "tokenValidateur", "value": "" },
+    { "key": "tokenAgent", "value": "" },
+    { "key": "agentId", "value": "42" },
+    { "key": "agentValidationId", "value": "7" },
+    { "key": "idDemande", "value": "" },
+    { "key": "idJeton", "value": "" },
+    { "key": "codeJeton", "value": "" },
+    { "key": "montantRetrait", "value": "" },
+    { "key": "idSessionCaisse", "value": "" },
+    { "key": "soldeOuverture", "value": "500000" },
+    { "key": "soldeReelCloture", "value": "348500" }
+  ],
+  "item": [
+    {
+      "name": "A — Caissier (jeton déjà validé)",
+      "item": [
+        {
+          "name": "A1 — Session courante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const s = pm.response.json();",
+                  "  pm.collectionVariables.set('idSessionCaisse', String(s.idSessionCaisse));",
+                  "  console.log('Session ouverte:', s.idSessionCaisse, 'solde:', s.soldeCourant);",
+                  "} else if (pm.response.code === 404) {",
+                  "  console.warn('Aucune session ouverte → lancer A2 Ouvrir session');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenCaissier}}" }
+            ],
+            "url": "{{baseUrl}}/api/Caisse/session/courante",
+            "description": "200 = session ouverte (idSessionCaisse renseigné).\n404 = passer à A2."
+          }
+        },
+        {
+          "name": "A2 — Ouvrir session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Session ouverte', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const s = pm.response.json();",
+                  "  pm.expect(s.statut).to.eql('OUVERTE');",
+                  "  pm.collectionVariables.set('idSessionCaisse', String(s.idSessionCaisse));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenCaissier}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"soldeOuverture\": {{soldeOuverture}}\n}"
+            },
+            "url": "{{baseUrl}}/api/Caisse/session/ouvrir",
+            "description": "Fond de caisse physique. Doit être ≥ montantRetrait du jeton.\nUtiliser le MÊME tokenCaissier pour A4."
+          }
+        },
+        {
+          "name": "A3 — Solde session",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenCaissier}}" }
+            ],
+            "url": "{{baseUrl}}/api/Caisse/session/{{idSessionCaisse}}/solde",
+            "description": "Vérifier soldeCourant ≥ montantRetrait avant paiement."
+          }
+        },
+        {
+          "name": "A4 — Payer jeton (utiliser-jeton)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Paiement OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.succes).to.be.true;",
+                  "  if (r.sessionCaisseId) {",
+                  "    pm.collectionVariables.set('idSessionCaisse', String(r.sessionCaisseId));",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenCaissier}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idJeton\": {{idJeton}},\n  \"codeJeton\": \"{{codeJeton}}\",\n  \"agentId\": {{agentId}},\n  \"observationUtilisation\": \"Paiement guichet principal\",\n  \"sessionCaisseId\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/retraitagent/utiliser-jeton",
+            "description": "sessionCaisseId null → session OUVERTE du JWT connecté.\nPrérequis: idJeton, codeJeton, agentId renseignés (Partie B ou manuel)."
+          }
+        },
+        {
+          "name": "A4bis — Alias marquer-paye",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenCaissier}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idJeton\": {{idJeton}},\n  \"codeJeton\": \"{{codeJeton}}\",\n  \"agentId\": {{agentId}},\n  \"observationUtilisation\": \"Paiement guichet (alias marquer-paye)\",\n  \"sessionCaisseId\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/retraitagent/marquer-paye",
+            "description": "Alias métier identique à utiliser-jeton. Ne pas rejouer si A4 a déjà réussi."
+          }
+        }
+      ]
+    },
+    {
+      "name": "B — Scénario complet (de zéro)",
+      "item": [
+        {
+          "name": "B1 — Agent période courante",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenAgent}}" }
+            ],
+            "url": "{{baseUrl}}/api/retraitagent/periode-courante",
+            "description": "Si estPeriodeAutorisee=false → stop."
+          }
+        },
+        {
+          "name": "B2 — Agent créer demande",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Demande créée', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.succes).to.be.true;",
+                  "  if (r.demandeId) pm.collectionVariables.set('idDemande', String(r.demandeId));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenAgent}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agentId\": {{agentId}},\n  \"montantDemande\": 150000,\n  \"motifRetrait\": \"Besoin personnel\"\n}"
+            },
+            "url": "{{baseUrl}}/api/retraitagent",
+            "description": "Fenêtre PARTIEL: montantDemande obligatoire.\nFenêtre TOTAL: omettre montantDemande."
+          }
+        },
+        {
+          "name": "B3 — Valider et générer jeton",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Jeton généré', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.succes).to.be.true;",
+                  "  if (r.demandeId) pm.collectionVariables.set('idDemande', String(r.demandeId));",
+                  "  if (r.jetonId) pm.collectionVariables.set('idJeton', String(r.jetonId));",
+                  "  if (r.jetonCode) pm.collectionVariables.set('codeJeton', r.jetonCode);",
+                  "  if (r.montantRetrait != null) pm.collectionVariables.set('montantRetrait', String(r.montantRetrait));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenValidateur}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idDemande\": {{idDemande}},\n  \"statutDemande\": \"VALIDEE\",\n  \"agentValidationId\": {{agentValidationId}},\n  \"motifValidation\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/retraitagent/valider-et-generer-jeton",
+            "description": "Remplit idJeton, codeJeton, montantRetrait.\nEnchaîner ensuite A1 → A4 avec tokenCaissier."
+          }
+        },
+        {
+          "name": "B4 — File en attente (optionnel)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenValidateur}}" }
+            ],
+            "url": "{{baseUrl}}/api/retraitagent/en-attente",
+            "description": "Liste des demandes EN_ATTENTE avant validation."
+          }
+        }
+      ]
+    },
+    {
+      "name": "C — Fin de journée",
+      "item": [
+        {
+          "name": "C1 — Clôturer session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Session clôturée', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const s = pm.response.json();",
+                  "  pm.expect(s.statut).to.eql('CLOTUREE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenCaissier}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"soldeReelCloture\": {{soldeReelCloture}},\n  \"observationCloture\": \"Clôture journalière\"\n}"
+            },
+            "url": "{{baseUrl}}/api/Caisse/session/{{idSessionCaisse}}/cloturer",
+            "description": "Après clôture, A1 doit renvoyer 404. Rouvrir (A2) le lendemain."
+          }
+        },
+        {
+          "name": "C2 — Vérifier plus de session courante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Plus de session ouverte', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenCaissier}}" }
+            ],
+            "url": "{{baseUrl}}/api/Caisse/session/courante"
+          }
+        },
+        {
+          "name": "C3 — Liste sessions (historique)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenCaissier}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/Caisse/sessions?pageNumber=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Caisse", "sessions"],
+              "query": [
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "statut", "value": "CLOTUREE", "disabled": true },
+                { "key": "dateDebut", "value": "2026-07-01", "disabled": true },
+                { "key": "dateFin", "value": "2026-07-31", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
