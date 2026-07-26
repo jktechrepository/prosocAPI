@@ -6,8 +6,8 @@ namespace ProsocAPI.Models.Core
     /// <summary>Règles métier — adhésion niveau 2 (encodeur / Agent Administratif).</summary>
     public static class AdhesionNiveau2Regles
     {
-        public const string StatutEnAttente = "EN ATTENTE";
-        public const string StatutValide = "VALIDÉ";
+        public const string StatutEnAttente = AdhesionStatutDossierRegles.EnAttente;
+        public const string StatutValide = AdhesionStatutDossierRegles.Valide;
 
         public static List<string> Valider(
             AdhesionNiveau2EncodeurDto input,

@@ -14,10 +14,10 @@ Documents connexes :
 
 | Étape | Acteur | Action |
 |-------|--------|--------|
-| 1 | Agent | Consulte la période autorisée et son solde |
-| 2 | Agent | Crée une **demande de retrait** (PARTIEL ou TOTAL selon la fenêtre) |
-| 3 | Admin / Superviseur | **Valide** la demande et génère un **jeton** |
-| 4 | Caissier / Percepteur | **Utilise le jeton** → débit wallet agent + sortie caisse |
+| 1 | Agent (ou Caissier) | Consulte la période autorisée et le solde |
+| 2 | Agent (ou Caissier) | Crée une **demande de retrait** (PARTIEL ou TOTAL selon la fenêtre) — permission `CREATE_DEMANDE_RETRAIT_AGENT` |
+| 3 | Admin / Superviseur / Caissier | **Valide** la demande et génère un **jeton** — permission `VALIDATE_DEMANDE_RETRAIT_AGENT` |
+| 4 | Caissier / Percepteur | **Utilise le jeton** → débit wallet agent + sortie caisse — permission `CONFIRM_RETRAIT_AGENT` |
 | 5 | Admin / IT | Ajuste les **paramètres métier** (fenêtres, montant minimum) via l'API dédiée |
 
 Les montants sont exprimés en **devise principale** du système (USD en configuration actuelle).
@@ -112,7 +112,7 @@ Ces endpoints lisent la config **base de données** via `IParametresMetierProvid
 sequenceDiagram
     participant Agent
     participant API as ProsocAPI
-    participant Validateur as Admin_Superviseur
+    participant Validateur as Admin_Superviseur_Caissier
     participant Caisse as Caissier_ou_Percepteur
 
     Agent->>API: GET periode-courante
@@ -131,10 +131,22 @@ sequenceDiagram
     API-->>Caisse: Paiement confirme
 ```
 
+### Permissions JWT (demande)
+
+| Permission | Rôles |
+|------------|--------|
+| `CREATE_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur |
+| `READ_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur |
+| `VALIDATE_DEMANDE_RETRAIT_AGENT` | Superviseur, Caissier (+ Admin bypass) |
+| `CONFIRM_RETRAIT_AGENT` | Caissier, Percepteur (paiement jeton ; distinct de la validation) |
+
+Prod : `sql/MigrateCaissierDemandeRetraitAgentPermissions.idempotent.sql` puis **reconnexion JWT**.
+
 ### 1. Création de demande
 
 **POST** `/api/retraitagent`
 
+- Permission : `CREATE_DEMANDE_RETRAIT_AGENT`.
 - Vérifie la **période courante** (sauf environnement tests).
 - Résout le type PARTIEL/TOTAL selon la fenêtre (`RetraitAgentDemandeResolver`).
 - **Réserve** le montant sur `SoldeDisponible` du wallet agent.

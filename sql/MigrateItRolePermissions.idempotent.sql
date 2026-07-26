@@ -49,6 +49,7 @@ INSERT INTO tmp_it_permission_noms (Nom) VALUES
     ('CREATE_DEVISE'),
     ('READ_DEVISE'),
     ('UPDATE_DEVISE'),
+    ('CREATE_TAUX_CHANGE'),
     ('CREATE_CATEGORIE_AGENT'),
     ('READ_CATEGORIE_AGENT'),
     ('UPDATE_CATEGORIE_AGENT'),

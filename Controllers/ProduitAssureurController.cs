@@ -92,6 +92,9 @@ namespace ProsocAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ProduitAssureurReadDto>> Create([FromBody] ProduitAssureurCreateDto createDto, CancellationToken ct = default)
         {
+            if (!HasPermission("CREATE_PRODUIT_ASSUREUR"))
+                return ForbiddenPermission("CREATE_PRODUIT_ASSUREUR");
+
             try
             {
                 var created = await _produitAssureurRepository.CreateAsync(MapFromCreateDto(createDto), ct);
@@ -112,6 +115,9 @@ namespace ProsocAPI.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult<ProduitAssureurReadDto>> Update(int id, [FromBody] ProduitAssureurUpdateDto updateDto, CancellationToken ct = default)
         {
+            if (!HasPermission("UPDATE_PRODUIT_ASSUREUR"))
+                return ForbiddenPermission("UPDATE_PRODUIT_ASSUREUR");
+
             try
             {
                 var updated = await _produitAssureurRepository.UpdateAsync(id, MapFromUpdateDto(updateDto), ct);

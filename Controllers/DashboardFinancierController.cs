@@ -254,6 +254,35 @@ namespace ProsocAPI.Controllers
         }
 
         /// <summary>
+        /// Reporting TargetAgent (adhésions) : synthèse par rôle + détail par agent pour le mois calendaire.
+        /// </summary>
+        [HttpGet("objectifs-agents")]
+        public async Task<ActionResult<ObjectifsAgentsFinancierDto>> GetObjectifsAgents(
+            [FromQuery] int? mois,
+            [FromQuery] int? annee,
+            CancellationToken ct)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Récupération reporting objectifs agents Financier (mois={Mois}, annee={Annee})",
+                    mois, annee);
+
+                var report = await _dashboardService.GetObjectifsAgentsAsync(mois, annee, ct);
+
+                _logger.LogInformation(
+                    "Objectifs agents récupérés: {NbRoles} rôles, {NbAgents} agents",
+                    report.SyntheseParRole.Count, report.DetailParAgent.Count);
+                return Ok(report);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération des objectifs agents");
+                return this.TechnicalErrorResponse("Erreur lors de la récupération des objectifs agents", ex);
+            }
+        }
+
+        /// <summary>
         /// Récupère les revenus par région
         /// </summary>
         [HttpGet("revenus-region")]

@@ -119,6 +119,38 @@ namespace ProsocAPI.Models.DTOs.Core
         public decimal ProgressionPrecedente { get; set; }
     }
 
+    /// <summary>Reporting TargetAgent (adhésions) pour le Financier — synthèse + détail.</summary>
+    public class ObjectifsAgentsFinancierDto
+    {
+        public int Mois { get; set; }
+        public int Annee { get; set; }
+        public List<ObjectifAgentRoleSyntheseDto> SyntheseParRole { get; set; } = new();
+        public List<ObjectifAgentDetailDto> DetailParAgent { get; set; } = new();
+    }
+
+    public class ObjectifAgentRoleSyntheseDto
+    {
+        public int RoleId { get; set; }
+        public string RoleNom { get; set; } = string.Empty;
+        public string LibelleTarget { get; set; } = string.Empty;
+        public int ObjectifUnitaire { get; set; }
+        public int NombreAgents { get; set; }
+        public int ObjectifTotal { get; set; }
+        public int RealiseTotal { get; set; }
+        public decimal Progression { get; set; }
+    }
+
+    public class ObjectifAgentDetailDto
+    {
+        public int AgentId { get; set; }
+        public string AgentNom { get; set; } = string.Empty;
+        public int RoleId { get; set; }
+        public string RoleNom { get; set; } = string.Empty;
+        public int ObjectifAdhesions { get; set; }
+        public int RealiseAdhesions { get; set; }
+        public decimal Progression { get; set; }
+    }
+
     // Répartition géographique des revenus
     public class RevenuGeographiqueDto
     {

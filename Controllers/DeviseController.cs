@@ -221,6 +221,9 @@ namespace ProsocAPI.Controllers
             [FromBody] TauxChangeDeviseCreateDto dto,
             CancellationToken ct = default)
         {
+            if (!HasPermission("CREATE_TAUX_CHANGE"))
+                return ForbiddenPermission("CREATE_TAUX_CHANGE");
+
             var codeSource = dto.CodeDeviseSource.ToUpperInvariant();
             var codeCible = dto.CodeDeviseCible.ToUpperInvariant();
 
@@ -262,6 +265,9 @@ namespace ProsocAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<DeviseReadDto>> Create([FromBody] DeviseCreateDto createDto, CancellationToken ct = default)
         {
+            if (!HasPermission("CREATE_DEVISE"))
+                return ForbiddenPermission("CREATE_DEVISE");
+
             try
             {
                 var devise = new Devise

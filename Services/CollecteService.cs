@@ -175,6 +175,13 @@ namespace ProsocAPI.Services
                 {
                     await ProduitEligibiliteRules.ValidateAchatProduitBySouscriptionAsync(
                         _db, entity.AffilieId, entity.SouscriptionPrestationId.Value, ct);
+
+                    await SouscriptionPeriodePaiementRules.EnsurePeriodeNonSoldeeAsync(
+                        _db,
+                        entity.SouscriptionPrestationId,
+                        entity.Mois,
+                        entity.Annee,
+                        ct);
                 }
 
                 var nombreDependants = await _db.Dependants

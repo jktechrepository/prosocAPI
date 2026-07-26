@@ -19,11 +19,18 @@ Documents complémentaires :
 | Format JSON | **camelCase** (sérialisation ASP.NET Core par défaut) |
 | Base URL API | ex. `https://dev-prosoc.asdc-rdc.org` (**sans** suffixe `/api`) |
 | Permissions paramètres | `READ_PARAMETRES_METIER`, `UPDATE_PARAMETRES_METIER` |
+| Permissions demande | `CREATE_DEMANDE_RETRAIT_AGENT`, `READ_DEMANDE_RETRAIT_AGENT`, `VALIDATE_DEMANDE_RETRAIT_AGENT` |
 | Permissions caisse | `OPEN_CAISSIER_SESSION`, `READ_CAISSIER_SESSION`, `CONFIRM_RETRAIT_AGENT` |
 
 ### Reconnexion après déploiement
 
-Après migration des permissions en UAT/production, demander aux utilisateurs **Admin**, **IT** et **Caissier** de **se reconnecter** pour rafraîchir le JWT (claims `permission`).
+Après migration des permissions en UAT/production, demander aux utilisateurs **Admin**, **IT**, **Caissier**, **Agent (AT)** et **Superviseur** de **se reconnecter** pour rafraîchir le JWT (claims `permission`).
+
+Script ciblé :
+
+```bash
+mysql -h <host> -u <user> -p <database> < sql/MigrateCaissierDemandeRetraitAgentPermissions.idempotent.sql
+```
 
 ### Script SQL UAT (table + permissions + seed)
 
@@ -39,7 +46,7 @@ mysql -h <host> -u <user> -p <database> < sql/DeployParametresMetierUat.idempote
 |---|---|---|
 | `/parametres/retrait-agent` | Admin, IT | `GET/PUT /api/parametres-metier/retrait-agent` |
 | `/agent/retrait` (ou module wallet) | Agent | `GET periode-courante`, `POST /api/retraitagent` |
-| `/admin/retraits/en-attente` | Admin, Superviseur | `GET en-attente`, `POST valider-et-generer-jeton` |
+| `/admin/retraits/en-attente` | Admin, Superviseur, Caissier | `GET en-attente`, `POST valider-et-generer-jeton` |
 | `/caisse/retrait` | Caissier, Percepteur, Financier | `POST utiliser-jeton` |
 
 ### Diagramme de navigation
@@ -72,13 +79,16 @@ Les permissions sont des claims multiples `permission` dans le JWT. **Admin** et
 |---|---|---|
 | `READ_PARAMETRES_METIER` | Admin, IT | Afficher menu Paramètres > Retrait agent |
 | `UPDATE_PARAMETRES_METIER` | Admin, IT | Bouton Enregistrer actif sur le formulaire |
+| `CREATE_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur (+ Admin bypass) | Créer une demande / helpers période-solde |
+| `READ_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur (+ Admin bypass) | Lister / consulter les demandes |
+| `VALIDATE_DEMANDE_RETRAIT_AGENT` | Superviseur, Caissier (+ Admin bypass) | Valider et générer le jeton |
 | `CONFIRM_RETRAIT_AGENT` | Caissier, Percepteur (+ Admin bypass) | Écran paiement jeton au guichet |
 | `OPEN_CAISSIER_SESSION` | Caissier, Percepteur | Ouvrir session avant paiement |
 | `READ_CAISSIER_SESSION` | Caissier, Percepteur | Consulter session courante / solde |
 
-Les endpoints opérationnels `retraitagent/*` exigent un JWT valide (`[Authorize]`) mais **pas de permission dédiée** sur la plupart des routes. Filtrer l'accès UI par **rôle métier** (Agent, Admin, Caissier).
+Les endpoints `retraitagent/*` exigent un JWT valide **et** la permission dédiée (create / read / validate). Admin et SuperAdmin bypassent `HasPermission`.
 
-Les routes paiement (`utiliser-jeton`, `marquer-paye`) exigent en plus le rôle JWT : `Admin`, `Caissier`, `Financier` ou `Percepteur`.
+Les routes paiement (`utiliser-jeton`, `marquer-paye`) exigent le rôle JWT : `Admin`, `Caissier`, `Financier` ou `Percepteur` (claim UI `CONFIRM_RETRAIT_AGENT` pour Caissier/Percepteur).
 
 > **Ne pas confondre** avec la perception des collectes compte virtuel : `POST /api/PerceptionVirtuelle/confirmer` (voir [`PROCESSUS_PERCEPTION_VIRTUELLE.md`](PROCESSUS_PERCEPTION_VIRTUELLE.md)).
 

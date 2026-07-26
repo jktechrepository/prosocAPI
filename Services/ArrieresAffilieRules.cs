@@ -86,11 +86,7 @@ namespace ProsocAPI.Services
 
         public static bool AdhesionEstValidee(Adhesion adhesion)
         {
-            return adhesion.Statut &&
-                   string.Equals(
-                       adhesion.StatutDossier?.Trim(),
-                       AdhesionNiveau2Regles.StatutValide,
-                       StringComparison.OrdinalIgnoreCase);
+            return adhesion.Statut && AdhesionStatutDossierRegles.EstValide(adhesion.StatutDossier);
         }
 
         public static string NormalizePeriodiciteFrais(string periodicite)

@@ -16,6 +16,9 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
     /// <summary>Rôles JWT simulés pour les tests d'autorisation.</summary>
     public static IReadOnlyList<string> Roles { get; set; } = new[] { "Admin", "Super-Admin" };
 
+    /// <summary>Claims permission JWT simulés (type « permission »).</summary>
+    public static IReadOnlyList<string> Permissions { get; set; } = Array.Empty<string>();
+
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
@@ -36,6 +39,9 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
 
         foreach (var role in Roles)
             claims.Add(new Claim(ClaimTypes.Role, role));
+
+        foreach (var permission in Permissions)
+            claims.Add(new Claim("permission", permission));
 
         var identity = new ClaimsIdentity(claims, SchemeName);
         var principal = new ClaimsPrincipal(identity);

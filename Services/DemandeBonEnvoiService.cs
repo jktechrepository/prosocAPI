@@ -159,8 +159,8 @@ namespace ProsocAPI.Services
                 };
             }
 
-            // Vérifier si le dossier est complet
-            if (adhesionActive.StatutDossier != "Complet")
+            // Vérifier si le dossier est validé (canon VALIDÉ ; legacy COMPLET/VALIDE normalisés)
+            if (!AdhesionStatutDossierRegles.EstValide(adhesionActive.StatutDossier))
             {
                 return new VerificationEligibiliteDto
                 {

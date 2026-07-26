@@ -363,6 +363,19 @@ graph TD
 
 La **validation** du dossier (`VALIDÉ`) relève du **niveau 2** (encodeur AA).
 
+#### StatutDossier (valeurs canoniques)
+
+Deux valeurs uniquement (écriture normalisée côté API) :
+
+| Canon | Sens |
+|-------|------|
+| `EN ATTENTE` | Dossier à compléter / encoder — seul état accepté par `PUT …/niveau-2-encodeur` et `PUT …/UpdateWithAffilieAsync/{id}` |
+| `VALIDÉ` | Dossier validé (`valider: true` au niveau 2) — requis pour éligibilité bon d’envoi / KPIs AA « dossier validé » |
+
+**Création** (`with-affilie`, etc.) : le statut client est ignoré → toujours `EN ATTENTE`.  
+**UpdateWithAffilie** : ne modifie plus `statutDossier` (transition uniquement via niveau 2).  
+**Legacy** (`COMPLET`, `VALIDE`, `A`, `En Attente`, …) : migrés / lus via `AdhesionStatutDossierRegles` (`sql/MigrateAdhesionStatutDossierCanonical.idempotent.sql`).
+
 #### 📌 Niveau 2 — Agent Administratif / Encodeur
 
 Saisie des informations de la fiche papier pour un dossier **`EN ATTENTE`** (créé au niveau 1).
@@ -687,6 +700,7 @@ Notes:
 - Permissions requises : `CREATE_COLLECTE` (JWT). La modification (`PUT /api/Collecte/{id}`) est **interdite** pour tous les rôles — voir section [Permissions JWT — module Collecte](#permissions-jwt--module-collecte). Guichet : `statutPaiement` normalisé en `VALIDE` si omis ou legacy.
 - `montant` côté collecte doit être le montant total attendu (souvent `montantUnitaire × (1 + nombreDependants)`).
 - Vous pouvez calculer ce montant via `GET /api/TarifCotisation/{id}/montant-total?nombreDependants=N`.
+- **Souscription / période** : si la somme des collectes `VALIDE` pour la même `souscriptionPrestationId` + `mois` + `annee` atteint déjà le tarif produit, un nouveau paiement est refusé (`400`, message contenant `DEJA_PAYEE_PERIODE`). Les paiements partiels restent autorisés tant que le total n’est pas atteint. Canaux : `POST /api/Collecte`, FlexPay collecte, `POST /api/Affilie/paiement`.
 - C’est ce paiement `Collecte` qui impute/régularise l’arriéré, pas le `POST /api/TarifCotisation`.
 
 #### 📤 Réponse réussie (201 Created)
@@ -1177,6 +1191,8 @@ Solde virtuel courant.
 #### PUT /api/WalletVirtuelAgent/{id}/ajouter-solde
 Recharge manuelle du wallet virtuel.
 
+**Permission** : `UPDATE_WALLET_VIRTUEL` (Admin / SuperAdmin bypass). Le rôle **Financier** n’a pas cette permission (lecture seule via `READ_WALLET_VIRTUEL`) — retrait ciblé prod : `sql/MigrateRemoveFinancierUpdateWalletVirtuel.idempotent.sql` ; reconnexion JWT.
+
 **Restriction hiérarchique** : le caller ne peut recharger que le wallet d'un agent dont `MIN(Role.Niveau)` est **strictement supérieur** au sien (plus junior). Auto-recharge interdite. SuperAdmin (`Niveau` 0) : aucune restriction. Agent cible sans rôle lié : refusé (sauf SuperAdmin).
 
 Si interdit → **403** :
@@ -1406,7 +1422,7 @@ Rôle requis : `Admin` ou `SuperAdmin`.
 |-------|---------------|
 | `totalCollectesMois` / `nombreCollectesMois` | Somme des collectes actives (`Statut = true`) du mois calendaire en cours, **tous agents**, consolidée en **devise principale** (`MontantDevisePrincipale`, repli sur `Montant`). Champ `devisePrincipaleCode` (ex. `USD`) |
 | `collectesEnAttente` | Paiement **confirmé** (`OK`, `PAYE`, `CONFIRMÉ`, …) mais **pas encore validé admin** (`Validé`). Exclut FlexPay `EN_ATTENTE` et collectes déjà validées |
-| `progressionCollectesMois` | Variation du montant collecté vs mois précédent (%). **100 %** si le mois précédent = 0 et le mois courant > 0 (démarrage d’activité) |
+| `progressionCollectesMois` | Variation MTD du montant collecté vs **même fenêtre** du mois précédent (1 → jour courant, jour borné si mois plus court). **100 %** si la période précédente = 0 et le mois courant > 0 |
 | `nouvellesAdhesionsAujourdhui` | Adhésions **actives** créées aujourd’hui |
 | `totalCommissionsMois` | Somme des mouvements wallet `COMM_COLLECTE` depuis le 1er du mois, consolidée en **devise principale** (conversion au taux actif à la date du mouvement). Même `devisePrincipaleCode` que `totalCollectesMois` |
 
@@ -1609,9 +1625,12 @@ Rôle requis : `Financier` (ou permissions équivalentes).
 | `GET /api/DashboardFinancier/produits-stats` | Statistiques produits |
 | `GET /api/DashboardFinancier/tendances` | Tendances journalières |
 | `GET /api/DashboardFinancier/transactions-periode` | Agrégats transactions |
-| `GET /api/DashboardFinancier/objectifs` | Objectifs vs réalisé |
+| `GET /api/DashboardFinancier/objectifs` | Objectifs vs réalisé (stub monétaire CA / collectes) |
+| `GET /api/DashboardFinancier/objectifs-agents` | Reporting TargetAgent adhésions : synthèse par rôle + détail par agent (`mois` / `annee`, défaut = mois courant) |
 | `GET /api/DashboardFinancier/revenus-region` | Revenus par région (simplifié) |
 | `GET /api/DashboardFinancier/rentabilite` | Indicateurs de rentabilité |
+
+**Objectifs agents (`objectifs-agents`)** : uniquement les agents actifs dont le rôle a un `TargetAgent` actif **Mensuelle**. `objectifTotal` = `Nombre × nbAgents` du rôle ; `realise` = count adhésions sur `[1er du mois, 1er du mois suivant)` ; détail trié par progression décroissante. Les agents sans cible mensuelle sont exclus (pas de défaut magique `100`).
 
 **Montants consolidés** : collectes via `MontantDevisePrincipale` (repli `Montant`) ; commissions wallet `COMM_COLLECTE` converties au taux actif à la date du mouvement. Champ `codeDeviseConsolidation` (ex. `USD`) sur les KPIs et le dashboard complet.
 
@@ -1765,6 +1784,10 @@ Rôle requis : **`Affilié`**. Permission : `ACCESS_DASHBOARD_AFFILIE`.
 #### Objectifs agents (`TargetAgent`) — par rôle applicatif
 
 **Breaking change (juin 2026)** : `agentId` est remplacé par `roleNom` (rôle JWT, ex. `"Agent (AT)"`). Un objectif s'applique à **tous** les agents du rôle.
+
+**Permissions** :
+- Lecture (`GET`) : `READ_TARGET_AGENT` **ou** `MANAGE_OBJECTIFS` (Admin / SuperAdmin bypass). Rôle **Financier** : `READ_TARGET_AGENT` (consultation seule — reconnexion JWT obligatoire après déploiement).
+- Écriture (`POST` / `PUT` / `DELETE`) : `MANAGE_OBJECTIFS` (Superviseur).
 
 | Méthode | Description |
 |---------|-------------|
@@ -2904,6 +2927,16 @@ Réponse type :
 - ✅ **TargetAgent par rôle** (breaking change) : `agentId` → `roleNom` ; `GET by-role/{roleNom}` ; dashboard AT lit la cible mensuelle du rôle ; seed 5/25/100 pour `Agent (AT)`
 - ✅ **Collecte** : retrait `UPDATE_COLLECTE` pour tous les rôles ; `PUT /api/Collecte/{id}` → 403 ; migration `sql/MigrateRemoveUpdateCollectePermission.idempotent.sql`
 - ✅ **Superviseur** : retrait `UPDATE_ADHESION` / `UPDATE_AFFILIE`, `CREATE_ASSUREUR` / `READ_ASSUREUR` / `UPDATE_ASSUREUR` et `CREATE_PRODUIT_ASSUREUR` ; scripts `sql/MigrateRemoveSuperviseurRestrictedPermissions.idempotent.sql` (ciblé) et `sql/MigrateSuperviseurRolePermissions.idempotent.sql` (catalogue) ; reconnexion JWT
+- ✅ **Financier** : retrait `UPDATE_AFFILIE` (lecture affilié et `UPDATE_ADHESION` conservés) ; script `sql/MigrateRemoveFinancierUpdateAffilie.idempotent.sql` (ciblé) ; catalogues `sql/MigrateFinancierRolePermissions*.idempotent.sql` ; reconnexion JWT
+- ✅ **Financier** : plus d’alimentation wallet virtuel — `UPDATE_WALLET_VIRTUEL` exigée sur les crédits (`ajouter-solde`, ajustements, solde initial) ; script `sql/MigrateRemoveFinancierUpdateWalletVirtuel.idempotent.sql` ; reconnexion JWT
+- ✅ **Financier / IT** : `CREATE_DEVISE` + `CREATE_TAUX_CHANGE` (POST `/api/Devise`, POST `/api/Devise/taux-change`) ; script `sql/MigrateFinancierCreateDeviseTaux.idempotent.sql` ; reconnexion JWT
+- ✅ **Financier** : `CREATE_FRAIS` (POST `/api/Frais`) ; script `sql/MigrateFinancierCreateFrais.idempotent.sql` ; reconnexion JWT
+- ✅ **Financier** : `CREATE`/`UPDATE` ProduitAssureur et ProduitMutuel ; script `sql/MigrateFinancierProduitPermissions.idempotent.sql` ; reconnexion JWT
+- ✅ **Financier** : `UPDATE`/`DELETE` SouscriptionPrestation ; script `sql/MigrateFinancierSouscriptionPrestationWrite.idempotent.sql` ; reconnexion JWT
+- ✅ **Caissier** : retrait `UPDATE`/`DELETE` SouscriptionPrestation (lecture seule) ; script `sql/MigrateRemoveCaissierSouscriptionPrestationWrite.idempotent.sql` ; reconnexion JWT
+- ✅ **Caissier** : `UPDATE_ADHESION` / `UPDATE_AFFILIE` (héritage Percepteur) ; script `sql/MigrateCaissierUpdateAdhesionAffilie.idempotent.sql` pour lier en prod ; reconnexion JWT
+- ✅ **Caissier** : `CREATE_DEMANDE_RETRAIT_AGENT` / `READ_DEMANDE_RETRAIT_AGENT` / `VALIDATE_DEMANDE_RETRAIT_AGENT` (create/voir/valider demande ; `CONFIRM_RETRAIT_AGENT` reste le paiement jeton) ; script `sql/MigrateCaissierDemandeRetraitAgentPermissions.idempotent.sql` ; Agent (AT) reçoit CREATE+READ, Superviseur VALIDATE ; reconnexion JWT
+- ✅ **Souscription** : blocage d’un nouveau paiement si la période (`mois`/`annee`) est déjà soldée (somme collectes `VALIDE` ≥ tarif) — code `DEJA_PAYEE_PERIODE` ; mapping `mois`/`annee` corrigé sur `POST /api/Collecte`
 - ✅ **Agent** : filtre hiérarchique `Role.Niveau` sur `GET /api/Agent` (listes + détail) — un rôle bas ne voit pas les niveaux plus hauts
 - ✅ **Wallet virtuel** : `idAgentFrom` / `nomAgentFrom` sur les mouvements (origine de la recharge)
 - ✅ **Adhésion FlexPay anonyme** : finalisation sans `UtilisateurId` ; `Adhesions.UtilisateurId` nullable ; script `sql/MigrateAdhesionUtilisateurIdNullable.idempotent.sql`

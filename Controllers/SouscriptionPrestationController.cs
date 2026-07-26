@@ -397,6 +397,9 @@ namespace ProsocAPI.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult<SouscriptionPrestationReadDto>> Update(int id, [FromBody] SouscriptionPrestationUpdateDto updateDto, CancellationToken ct = default)
         {
+            if (!HasPermission("UPDATE_SOUSCRIPTION_PRESTATION"))
+                return ForbiddenPermission("UPDATE_SOUSCRIPTION_PRESTATION");
+
             var souscription = new SouscriptionPrestation
             {
                 AffilieId = updateDto.AffilieId,
@@ -431,6 +434,9 @@ namespace ProsocAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id, CancellationToken ct = default)
         {
+            if (!HasPermission("DELETE_SOUSCRIPTION_PRESTATION"))
+                return ForbiddenPermission("DELETE_SOUSCRIPTION_PRESTATION");
+
             var success = await _souscriptionRepository.DeleteAsync(id, ct);
             if (!success)
                 return NotFound();

@@ -68,6 +68,13 @@ INSERT INTO tmp_caissier_permission_noms (Nom) VALUES
     ('READ_BON_ENVOI'),
     ('READ_DEMANDE_BON_ENVOI'),
     ('CONFIRM_DEMANDE_BON_ENVOI'),
+    ('OPEN_CAISSIER_SESSION'),
+    ('CLOSE_CAISSIER_SESSION'),
+    ('READ_CAISSIER_SESSION'),
+    ('CREATE_DEMANDE_RETRAIT_AGENT'),
+    ('READ_DEMANDE_RETRAIT_AGENT'),
+    ('VALIDATE_DEMANDE_RETRAIT_AGENT'),
+    ('CONFIRM_RETRAIT_AGENT'),
     ('GENERATE_RAPPORT'),
     ('EXPORT_DATA'),
     ('READ_STATISTIQUES'),
@@ -77,6 +84,34 @@ INSERT INTO tmp_caissier_permission_noms (Nom) VALUES
 INSERT INTO Permissions (Nom, Description, Categorie, Action, Statut, DateCreation)
 SELECT 'ACCESS_DASHBOARD_CAISSIER', 'Accéder au dashboard caissier', 'DASHBOARD_CAISSIER', 'ACCESS', 1, NOW()
 WHERE NOT EXISTS (SELECT 1 FROM Permissions WHERE Nom = 'ACCESS_DASHBOARD_CAISSIER');
+
+INSERT INTO Permissions (Nom, Description, Categorie, Action, Statut, DateCreation)
+SELECT 'CREATE_DEMANDE_RETRAIT_AGENT', 'Créer une demande de retrait agent', 'DEMANDE_RETRAIT_AGENT', 'CREATE', 1, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM Permissions WHERE Nom = 'CREATE_DEMANDE_RETRAIT_AGENT');
+
+INSERT INTO Permissions (Nom, Description, Categorie, Action, Statut, DateCreation)
+SELECT 'READ_DEMANDE_RETRAIT_AGENT', 'Consulter les demandes de retrait agent', 'DEMANDE_RETRAIT_AGENT', 'READ', 1, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM Permissions WHERE Nom = 'READ_DEMANDE_RETRAIT_AGENT');
+
+INSERT INTO Permissions (Nom, Description, Categorie, Action, Statut, DateCreation)
+SELECT 'VALIDATE_DEMANDE_RETRAIT_AGENT', 'Valider une demande de retrait agent et générer le jeton', 'DEMANDE_RETRAIT_AGENT', 'VALIDATE', 1, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM Permissions WHERE Nom = 'VALIDATE_DEMANDE_RETRAIT_AGENT');
+
+INSERT INTO Permissions (Nom, Description, Categorie, Action, Statut, DateCreation)
+SELECT 'CONFIRM_RETRAIT_AGENT', 'Payer un retrait agent au guichet', 'RETRAIT_AGENT', 'CONFIRM', 1, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM Permissions WHERE Nom = 'CONFIRM_RETRAIT_AGENT');
+
+INSERT INTO Permissions (Nom, Description, Categorie, Action, Statut, DateCreation)
+SELECT 'OPEN_CAISSIER_SESSION', 'Ouvrir une session de caisse', 'CAISSIER_SESSION', 'OPEN', 1, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM Permissions WHERE Nom = 'OPEN_CAISSIER_SESSION');
+
+INSERT INTO Permissions (Nom, Description, Categorie, Action, Statut, DateCreation)
+SELECT 'CLOSE_CAISSIER_SESSION', 'Clôturer une session de caisse', 'CAISSIER_SESSION', 'CLOSE', 1, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM Permissions WHERE Nom = 'CLOSE_CAISSIER_SESSION');
+
+INSERT INTO Permissions (Nom, Description, Categorie, Action, Statut, DateCreation)
+SELECT 'READ_CAISSIER_SESSION', 'Consulter session et mouvements de caisse', 'CAISSIER_SESSION', 'READ', 1, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM Permissions WHERE Nom = 'READ_CAISSIER_SESSION');
 
 SELECT '=== AVANT : permissions du rôle Caissier ===' AS Section;
 

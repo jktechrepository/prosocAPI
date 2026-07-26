@@ -68,6 +68,84 @@ public class DashboardAdminServiceTests
     }
 
     [Fact]
+    public async Task GetKpisAsync_ProgressionCollectesMois_CompareMtdVsMtd_IgnoreFinMoisPrecedent()
+    {
+        await RunAsync(async (service, db) =>
+        {
+            await SeedCollecteDependenciesAsync(db);
+
+            var now = DateTime.Now;
+            var debutMois = new DateTime(now.Year, now.Month, 1);
+            var debutMoisPrecedent = debutMois.AddMonths(-1);
+            var jourEquivalent = Math.Min(
+                now.Day,
+                DateTime.DaysInMonth(debutMoisPrecedent.Year, debutMoisPrecedent.Month));
+
+            // MTD courant : 100
+            db.Collectes.Add(await CreateCollecteAsync(
+                db, CollecteStatutPaiement.Valide, 100m, debutMois.AddHours(12)));
+
+            // Même fenêtre MTD mois précédent : 100
+            db.Collectes.Add(await CreateCollecteAsync(
+                db,
+                CollecteStatutPaiement.Valide,
+                100m,
+                debutMoisPrecedent.AddDays(jourEquivalent - 1).AddHours(12)));
+
+            // Après le jour équivalent du mois précédent (hors MTD) : 900
+            // Ancien calcul (mois plein) aurait donné une forte baisse ; MTD vs MTD → 0 %
+            var dernierJourMoisPrecedent = DateTime.DaysInMonth(
+                debutMoisPrecedent.Year, debutMoisPrecedent.Month);
+            if (jourEquivalent < dernierJourMoisPrecedent)
+            {
+                db.Collectes.Add(await CreateCollecteAsync(
+                    db,
+                    CollecteStatutPaiement.Valide,
+                    900m,
+                    new DateTime(
+                        debutMoisPrecedent.Year,
+                        debutMoisPrecedent.Month,
+                        dernierJourMoisPrecedent,
+                        12, 0, 0)));
+            }
+
+            await db.SaveChangesAsync();
+
+            var kpis = await service.GetKpisAsync();
+            Assert.Equal(100m, kpis.TotalCollectesMois);
+            Assert.Equal(0, kpis.ProgressionCollectesMois);
+        });
+    }
+
+    [Fact]
+    public async Task GetKpisAsync_ProgressionCollectesMois_BaisseReelleSurFenetreMtd()
+    {
+        await RunAsync(async (service, db) =>
+        {
+            await SeedCollecteDependenciesAsync(db);
+
+            var now = DateTime.Now;
+            var debutMois = new DateTime(now.Year, now.Month, 1);
+            var debutMoisPrecedent = debutMois.AddMonths(-1);
+            var jourEquivalent = Math.Min(
+                now.Day,
+                DateTime.DaysInMonth(debutMoisPrecedent.Year, debutMoisPrecedent.Month));
+
+            db.Collectes.Add(await CreateCollecteAsync(
+                db, CollecteStatutPaiement.Valide, 100m, debutMois.AddHours(12)));
+            db.Collectes.Add(await CreateCollecteAsync(
+                db,
+                CollecteStatutPaiement.Valide,
+                200m,
+                debutMoisPrecedent.AddDays(jourEquivalent - 1).AddHours(12)));
+            await db.SaveChangesAsync();
+
+            var kpis = await service.GetKpisAsync();
+            Assert.Equal(-50, kpis.ProgressionCollectesMois);
+        });
+    }
+
+    [Fact]
     public async Task GetKpisAsync_NouvellesAdhesionsAujourdhui_IgnoreAdhesionsInactives()
     {
         await RunAsync(async (service, db) =>

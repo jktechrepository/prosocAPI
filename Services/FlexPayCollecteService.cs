@@ -86,6 +86,16 @@ namespace ProsocAPI.Services
 
             await ValidateStructureAsync(dto, ct);
 
+            if (dto.TypeCollecte == TypeCollecte.Souscription && dto.SouscriptionPrestationId.HasValue)
+            {
+                await SouscriptionPeriodePaiementRules.EnsurePeriodeNonSoldeeAsync(
+                    _db,
+                    dto.SouscriptionPrestationId,
+                    dto.Mois,
+                    dto.Annee,
+                    ct);
+            }
+
             await _holdService.EnsureNoActiveHoldAsync(
                 dto.AffilieId, dto.TypeCollecte, dto.Mois, dto.Annee,
                 dto.FraisId, dto.SouscriptionPrestationId, dto.CotisationAffilieId,

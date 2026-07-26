@@ -81,17 +81,12 @@ namespace ProsocAPI.Services
                 var moisPaiement = dto.Mois > 0 ? dto.Mois : DateTime.UtcNow.Month;
                 var anneePaiement = dto.Annee > 0 ? dto.Annee : DateTime.UtcNow.Year;
 
-                // 2. Vérifier que la période n'est pas déjà payée
-                var dejaPayee = await _db.Collectes
-                    .AnyAsync(c => c.SouscriptionPrestationId == dto.SouscriptionPrestationId
-                                   && c.TypeCollecte == TypeCollecte.Souscription
-                                   && c.Mois == moisPaiement
-                                   && c.Annee == anneePaiement
-                                   && c.Statut, ct);
-
-                if (dejaPayee)
-                    throw new InvalidOperationException(
-                        $"Cette souscription est déjà payée pour la période {moisPaiement:D2}/{anneePaiement}");
+                await SouscriptionPeriodePaiementRules.EnsurePeriodeNonSoldeeAsync(
+                    _db,
+                    dto.SouscriptionPrestationId,
+                    moisPaiement,
+                    anneePaiement,
+                    ct);
 
                 await ProduitEligibiliteRules.ValidateAchatProduitBySouscriptionAsync(
                     _db, affilieId, dto.SouscriptionPrestationId, ct);
@@ -258,12 +253,12 @@ namespace ProsocAPI.Services
         {
             try
             {
-                var dejaPayee = await _db.Collectes
-                    .AnyAsync(c => c.SouscriptionPrestationId == souscriptionId 
-                                   && c.TypeCollecte == TypeCollecte.Souscription 
-                                   && c.Statut, ct);
-
-                return dejaPayee;
+                var mois = DateTime.UtcNow.Month;
+                var annee = DateTime.UtcNow.Year;
+                var attendu = await SouscriptionPeriodePaiementRules.ResolveMontantAttenduSouscriptionAsync(
+                    _db, souscriptionId, ct);
+                return await SouscriptionPeriodePaiementRules.EstPeriodeSoldeeAsync(
+                    _db, souscriptionId, mois, annee, attendu, ct);
             }
             catch (Exception ex)
             {

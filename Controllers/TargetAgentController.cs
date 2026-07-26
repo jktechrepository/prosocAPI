@@ -36,6 +36,9 @@ namespace ProsocAPI.Controllers
         public async Task<ActionResult<PaginatedResponse<TargetAgentReadDto>>> GetAll(
             [FromQuery] PaginationRequest request)
         {
+            if (!CanReadTargetAgent())
+                return ForbiddenTargetAgentRead();
+
             try
             {
                 var query = _db.TargetsAgents
@@ -67,6 +70,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<TargetAgentReadDto>> GetById(int id, CancellationToken ct = default)
         {
+            if (!CanReadTargetAgent())
+                return ForbiddenTargetAgentRead();
+
             var target = await _targetAgentRepository.GetByIdAsync(id, ct);
             if (target == null)
                 return NotFound();
@@ -77,6 +83,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("by-role/{roleNom}")]
         public async Task<ActionResult<List<TargetAgentReadDto>>> GetByRole(string roleNom, CancellationToken ct = default)
         {
+            if (!CanReadTargetAgent())
+                return ForbiddenTargetAgentRead();
+
             var role = await TargetAgentRoleResolver.ResolveRoleByNomAsync(_db, roleNom, ct);
             if (role == null)
                 return NotFound(new { error = $"Rôle '{roleNom}' introuvable ou inactif." });
@@ -88,6 +97,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("actifs")]
         public async Task<ActionResult<List<TargetAgentReadDto>>> GetActifs(CancellationToken ct = default)
         {
+            if (!CanReadTargetAgent())
+                return ForbiddenTargetAgentRead();
+
             var targets = await _targetAgentRepository.GetActifsAsync(ct);
             return Ok(targets.Select(MapToDto).ToList());
         }
@@ -97,6 +109,9 @@ namespace ProsocAPI.Controllers
             [FromBody] TargetAgentCreateDto createDto,
             CancellationToken ct = default)
         {
+            if (!HasPermission("MANAGE_OBJECTIFS"))
+                return ForbiddenPermission("MANAGE_OBJECTIFS");
+
             var role = await TargetAgentRoleResolver.ResolveRoleByNomAsync(_db, createDto.RoleNom, ct);
             if (role == null)
                 return BadRequest(new { error = $"Rôle '{createDto.RoleNom}' introuvable ou inactif." });
@@ -121,6 +136,9 @@ namespace ProsocAPI.Controllers
             [FromBody] TargetAgentUpdateDto updateDto,
             CancellationToken ct = default)
         {
+            if (!HasPermission("MANAGE_OBJECTIFS"))
+                return ForbiddenPermission("MANAGE_OBJECTIFS");
+
             var role = await TargetAgentRoleResolver.ResolveRoleByNomAsync(_db, updateDto.RoleNom, ct);
             if (role == null)
                 return BadRequest(new { error = $"Rôle '{updateDto.RoleNom}' introuvable ou inactif." });
@@ -145,12 +163,21 @@ namespace ProsocAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id, CancellationToken ct = default)
         {
+            if (!HasPermission("MANAGE_OBJECTIFS"))
+                return ForbiddenPermission("MANAGE_OBJECTIFS");
+
             var success = await _targetAgentRepository.DeleteAsync(id, ct);
             if (!success)
                 return NotFound();
 
             return NoContent();
         }
+
+        private bool CanReadTargetAgent() =>
+            HasPermission("READ_TARGET_AGENT") || HasPermission("MANAGE_OBJECTIFS");
+
+        private ActionResult ForbiddenTargetAgentRead() =>
+            ForbiddenPermission("READ_TARGET_AGENT ou MANAGE_OBJECTIFS");
 
         private static TargetAgentReadDto MapToDto(TargetAgent t) => new()
         {

@@ -79,9 +79,74 @@ public class OperationalRoleCollectePermissionsTests
         var permissions = InvokePermissionWhitelist("GetFinancierRolePermissionNames");
         Assert.Contains("CREATE_ADHESION", permissions);
         Assert.Contains("UPDATE_ADHESION", permissions);
-        Assert.Contains("UPDATE_AFFILIE", permissions);
+        Assert.DoesNotContain("UPDATE_AFFILIE", permissions);
+        Assert.Contains("READ_AFFILIE", permissions);
         Assert.Contains("READ_TYPE_ADHESION", permissions);
         Assert.Contains("READ_STATISTIQUES", permissions);
+    }
+
+    [Fact]
+    public void FinancierRole_DoesNotIncludeUpdateAffilie()
+    {
+        var permissions = InvokePermissionWhitelist("GetFinancierRolePermissionNames");
+        Assert.DoesNotContain("UPDATE_AFFILIE", permissions);
+        Assert.Contains("READ_AFFILIE", permissions);
+        Assert.Contains("UPDATE_ADHESION", permissions);
+    }
+
+    [Fact]
+    public void FinancierRole_DoesNotIncludeUpdateWalletVirtuel()
+    {
+        var permissions = InvokePermissionWhitelist("GetFinancierRolePermissionNames");
+        Assert.DoesNotContain("UPDATE_WALLET_VIRTUEL", permissions);
+        Assert.Contains("READ_WALLET_VIRTUEL", permissions);
+    }
+
+    [Fact]
+    public void FinancierRole_IncludesCreateDeviseAndTauxChange()
+    {
+        var permissions = InvokePermissionWhitelist("GetFinancierRolePermissionNames");
+        Assert.Contains("CREATE_DEVISE", permissions);
+        Assert.Contains("CREATE_TAUX_CHANGE", permissions);
+        Assert.Contains("READ_DEVISE", permissions);
+    }
+
+    [Fact]
+    public void FinancierRole_IncludesCreateFrais()
+    {
+        var permissions = InvokePermissionWhitelist("GetFinancierRolePermissionNames");
+        Assert.Contains("CREATE_FRAIS", permissions);
+        Assert.Contains("READ_FRAIS", permissions);
+        Assert.Contains("UPDATE_FRAIS", permissions);
+    }
+
+    [Fact]
+    public void FinancierRole_IncludesCreateUpdateProduits()
+    {
+        var permissions = InvokePermissionWhitelist("GetFinancierRolePermissionNames");
+        Assert.Contains("CREATE_PRODUIT_MUTUEL", permissions);
+        Assert.Contains("UPDATE_PRODUIT_MUTUEL", permissions);
+        Assert.Contains("CREATE_PRODUIT_ASSUREUR", permissions);
+        Assert.Contains("UPDATE_PRODUIT_ASSUREUR", permissions);
+        Assert.Contains("READ_PRODUIT_MUTUEL", permissions);
+        Assert.Contains("READ_PRODUIT_ASSUREUR", permissions);
+    }
+
+    [Fact]
+    public void FinancierRole_IncludesUpdateDeleteSouscriptionPrestation()
+    {
+        var permissions = InvokePermissionWhitelist("GetFinancierRolePermissionNames");
+        Assert.Contains("READ_SOUSCRIPTION_PRESTATION", permissions);
+        Assert.Contains("UPDATE_SOUSCRIPTION_PRESTATION", permissions);
+        Assert.Contains("DELETE_SOUSCRIPTION_PRESTATION", permissions);
+    }
+
+    [Fact]
+    public void ItRole_IncludesCreateTauxChange()
+    {
+        var permissions = InvokePermissionWhitelist("GetItRolePermissionNames");
+        Assert.Contains("CREATE_DEVISE", permissions);
+        Assert.Contains("CREATE_TAUX_CHANGE", permissions);
     }
 
     [Fact]
@@ -149,5 +214,52 @@ public class OperationalRoleCollectePermissionsTests
         var permissions = InvokePermissionWhitelist("GetAgentAtRolePermissionNames");
         Assert.Contains("UPDATE_ADHESION", permissions);
         Assert.Contains("UPDATE_AFFILIE", permissions);
+    }
+
+    [Fact]
+    public void CaissierRole_DoesNotIncludeUpdateDeleteSouscriptionPrestation()
+    {
+        var permissions = InvokePermissionWhitelist("GetCaissierRolePermissionNames");
+        Assert.DoesNotContain("UPDATE_SOUSCRIPTION_PRESTATION", permissions);
+        Assert.DoesNotContain("DELETE_SOUSCRIPTION_PRESTATION", permissions);
+        Assert.Contains("READ_SOUSCRIPTION_PRESTATION", permissions);
+    }
+
+    [Fact]
+    public void CaissierRole_IncludesUpdateAdhesionEtAffilie()
+    {
+        var permissions = InvokePermissionWhitelist("GetCaissierRolePermissionNames");
+        Assert.Contains("UPDATE_ADHESION", permissions);
+        Assert.Contains("UPDATE_AFFILIE", permissions);
+        Assert.Contains("READ_ADHESION", permissions);
+        Assert.Contains("READ_AFFILIE", permissions);
+    }
+
+    [Fact]
+    public void CaissierRole_IncludesDemandeRetraitAgentCreateReadValidate()
+    {
+        var permissions = InvokePermissionWhitelist("GetCaissierRolePermissionNames");
+        Assert.Contains("CREATE_DEMANDE_RETRAIT_AGENT", permissions);
+        Assert.Contains("READ_DEMANDE_RETRAIT_AGENT", permissions);
+        Assert.Contains("VALIDATE_DEMANDE_RETRAIT_AGENT", permissions);
+        Assert.Contains("CONFIRM_RETRAIT_AGENT", permissions);
+    }
+
+    [Fact]
+    public void AgentAtRole_IncludesDemandeRetraitAgentCreateRead()
+    {
+        var permissions = InvokePermissionWhitelist("GetAgentAtRolePermissionNames");
+        Assert.Contains("CREATE_DEMANDE_RETRAIT_AGENT", permissions);
+        Assert.Contains("READ_DEMANDE_RETRAIT_AGENT", permissions);
+        Assert.DoesNotContain("VALIDATE_DEMANDE_RETRAIT_AGENT", permissions);
+    }
+
+    [Fact]
+    public void SuperviseurRole_IncludesDemandeRetraitAgentValidate()
+    {
+        var permissions = InvokePermissionWhitelist("GetSuperviseurRolePermissionNames");
+        Assert.Contains("CREATE_DEMANDE_RETRAIT_AGENT", permissions);
+        Assert.Contains("READ_DEMANDE_RETRAIT_AGENT", permissions);
+        Assert.Contains("VALIDATE_DEMANDE_RETRAIT_AGENT", permissions);
     }
 }

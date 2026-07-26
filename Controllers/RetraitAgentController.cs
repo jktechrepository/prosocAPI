@@ -76,6 +76,9 @@ namespace ProsocAPI.Controllers
         public async Task<ActionResult<PaginatedResponse<DemandeRetraitAgentReadDto>>> GetAll(
             [FromQuery] PaginationRequest request)
         {
+            if (!HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("READ_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var query = _db.DemandesRetraitAgents
@@ -114,6 +117,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<DemandeRetraitAgentReadDto>> GetById(int id, CancellationToken ct = default)
         {
+            if (!HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("READ_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var demande = await _retraitAgentRepository.GetByIdAsync(id, ct);
@@ -140,6 +146,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("by-agent/{agentId}")]
         public async Task<ActionResult<List<DemandeRetraitAgentReadDto>>> GetByAgent(int agentId, CancellationToken ct = default)
         {
+            if (!HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("READ_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var demandes = await _retraitAgentRepository.GetByAgentIdAsync(agentId, ct);
@@ -161,6 +170,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("by-statut/{statut}")]
         public async Task<ActionResult<List<DemandeRetraitAgentReadDto>>> GetByStatut(string statut, CancellationToken ct = default)
         {
+            if (!HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("READ_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var demandes = await _retraitAgentRepository.GetByStatutAsync(statut, ct);
@@ -185,6 +197,9 @@ namespace ProsocAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<RetraitWorkflowResultDto>> Create([FromBody] DemandeRetraitAgentCreateDto createDto, CancellationToken ct = default)
         {
+            if (!HasPermission("CREATE_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("CREATE_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var resultat = await _retraitAgentService.CreerDemandeRetraitAsync(createDto, ct);
@@ -215,6 +230,9 @@ namespace ProsocAPI.Controllers
         [HttpPost("verifier-periode")]
         public async Task<ActionResult<PeriodeRetraitVerificationDto>> VerifierPeriodeRetrait([FromBody] DateTime date, CancellationToken ct = default)
         {
+            if (!HasPermission("CREATE_DEMANDE_RETRAIT_AGENT") && !HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("CREATE_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var verification = await _retraitAgentService.VerifierPeriodeRetraitAsync(date, ct);
@@ -233,6 +251,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("periode-courante")]
         public async Task<ActionResult<PeriodeRetraitCouranteDto>> GetPeriodeCourante(CancellationToken ct = default)
         {
+            if (!HasPermission("CREATE_DEMANDE_RETRAIT_AGENT") && !HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("CREATE_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 return Ok(await _retraitAgentService.GetPeriodeCouranteAsync(ct));
@@ -250,6 +271,9 @@ namespace ProsocAPI.Controllers
         [HttpPost("verifier-solde")]
         public async Task<ActionResult<SoldeVerificationDto>> VerifierSoldeDisponible([FromBody] SoldeVerificationDto verificationDto, CancellationToken ct = default)
         {
+            if (!HasPermission("CREATE_DEMANDE_RETRAIT_AGENT") && !HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("CREATE_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var verification = await _retraitAgentService.VerifierSoldeDisponible(verificationDto.AgentId, verificationDto.MontantDemande, ct);
@@ -268,6 +292,9 @@ namespace ProsocAPI.Controllers
         [HttpPost("valider-et-generer-jeton")]
         public async Task<ActionResult<RetraitWorkflowResultDto>> ValiderEtGenererJeton([FromBody] DemandeRetraitAgentValidationDto validationDto, CancellationToken ct = default)
         {
+            if (!HasPermission("VALIDATE_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("VALIDATE_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var resultat = await _retraitAgentService.ValiderEtGenererJetonAsync(
@@ -356,6 +383,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("stats/{date:datetime}")]
         public async Task<ActionResult<DemandeRetraitAgentStatsDto>> GetStats(DateTime date, CancellationToken ct = default)
         {
+            if (!HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("READ_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var stats = await _retraitAgentService.GetStatsAsync(date, ct);
@@ -374,6 +404,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("en-attente")]
         public async Task<ActionResult<List<DemandeRetraitAgentReadDto>>> GetEnAttente(CancellationToken ct = default)
         {
+            if (!HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("READ_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var demandes = await _retraitAgentRepository.GetByStatutAsync("EN_ATTENTE", ct);
@@ -395,6 +428,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("validees")]
         public async Task<ActionResult<List<DemandeRetraitAgentReadDto>>> GetValidees(CancellationToken ct = default)
         {
+            if (!HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("READ_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var demandes = await _retraitAgentRepository.GetByStatutAsync("VALIDEE", ct);
@@ -416,6 +452,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("traitees")]
         public async Task<ActionResult<List<DemandeRetraitAgentReadDto>>> GetTraitees(CancellationToken ct = default)
         {
+            if (!HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("READ_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var demandes = await _retraitAgentRepository.GetByStatutAsync("TRAITEE", ct);
@@ -437,6 +476,9 @@ namespace ProsocAPI.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult<DemandeRetraitAgentReadDto>> Update(int id, [FromBody] DemandeRetraitAgentValidationDto validationDto, CancellationToken ct = default)
         {
+            if (!HasPermission("VALIDATE_DEMANDE_RETRAIT_AGENT"))
+                return ForbiddenPermission("VALIDATE_DEMANDE_RETRAIT_AGENT");
+
             try
             {
                 var demande = await _retraitAgentRepository.GetByIdAsync(id, ct);

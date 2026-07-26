@@ -48,7 +48,8 @@ namespace ProsocAPI.Models.DTOs.DashboardAdmin
         public int NombreCollectesMois { get; set; }
 
         /// <summary>
-        /// Progression des collectes vs mois précédent (%). 100 % si démarrage sans historique (mois précédent = 0).
+        /// Progression des collectes MTD vs même fenêtre du mois précédent (%).
+        /// 100 % si démarrage sans historique (période précédente = 0).
         /// </summary>
         [DisplayFormat(DataFormatString = "{0:N1}%")]
         public decimal ProgressionCollectesMois { get; set; }

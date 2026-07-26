@@ -34,6 +34,9 @@ public class DashboardAgentAAServiceTests
 
     private static async Task<(int AgentCibleId, int AutreAgentId)> SeedAgentAaDataAsync(ProsocDbContext db)
     {
+        var devise = new Devise { Code = "USD", Nom = "Dollar", EstDevisePrincipale = false, Statut = true };
+        db.Devises.Add(devise);
+
         var categorie = new CategorieAdhesion { Libelle = "Standard", Statut = true };
         db.CategoriesAdhesions.Add(categorie);
         await db.SaveChangesAsync();
@@ -42,6 +45,7 @@ public class DashboardAgentAAServiceTests
         {
             Libelle = "Individuel",
             CategorieAdhesionId = categorie.IdCategorieAdhesion,
+            DeviseId = devise.IdDevise,
             MaxDependants = 0,
             Montant = 10m,
             Statut = true

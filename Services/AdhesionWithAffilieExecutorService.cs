@@ -116,7 +116,7 @@ namespace ProsocAPI.Services
 
             var adhesion = new Adhesion
             {
-                StatutDossier = input.StatutDossier,
+                StatutDossier = AdhesionStatutDossierRegles.EnAttente,
                 TypeAdhesionId = input.TypeAdhesionId,
                 AgentId = adhesionAgentId,
                 UtilisateurId = utilisateurId,

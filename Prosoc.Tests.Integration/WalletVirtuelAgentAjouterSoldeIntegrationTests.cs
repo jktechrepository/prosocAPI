@@ -140,19 +140,29 @@ namespace Prosoc.Tests.Integration
         [Fact]
         public async Task AjouterSolde_AtVersSuperviseur_Retourne403()
         {
-            TestAuthHandler.Roles = new[] { "Admin", "SuperAdmin" };
-            var (_, walletId) = await CreateAgentWithWalletVirtuelAsync("Superviseur");
+            var previousRoles = TestAuthHandler.Roles;
+            var previousPermissions = TestAuthHandler.Permissions;
+            try
+            {
+                TestAuthHandler.Roles = new[] { "Admin", "SuperAdmin" };
+                TestAuthHandler.Permissions = Array.Empty<string>();
+                var (_, walletId) = await CreateAgentWithWalletVirtuelAsync("Superviseur");
 
-            TestAuthHandler.Roles = new[] { "Agent (AT)" };
-            var response = await _client.PutAsJsonAsync(
-                $"/api/WalletVirtuelAgent/{walletId}/ajouter-solde",
-                new WalletVirtuelAgentAjouterSoldeDto { Montant = 50m, Observation = "Tentative AT→SP" });
+                TestAuthHandler.Roles = new[] { "Agent (AT)" };
+                TestAuthHandler.Permissions = new[] { "UPDATE_WALLET_VIRTUEL" };
+                var response = await _client.PutAsJsonAsync(
+                    $"/api/WalletVirtuelAgent/{walletId}/ajouter-solde",
+                    new WalletVirtuelAgentAjouterSoldeDto { Montant = 50m, Observation = "Tentative AT→SP" });
 
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-            var body = await response.Content.ReadAsStringAsync();
-            Assert.Contains("HIERARCHIE_RECHARGE_INTERDITE", body, StringComparison.Ordinal);
-
-            TestAuthHandler.Roles = new[] { "Admin", "SuperAdmin" };
+                Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+                var body = await response.Content.ReadAsStringAsync();
+                Assert.Contains("HIERARCHIE_RECHARGE_INTERDITE", body, StringComparison.Ordinal);
+            }
+            finally
+            {
+                TestAuthHandler.Roles = previousRoles;
+                TestAuthHandler.Permissions = previousPermissions;
+            }
         }
 
         [Fact]
@@ -201,6 +211,35 @@ namespace Prosoc.Tests.Integration
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
             var body = await response.Content.ReadAsStringAsync();
             Assert.Contains("inactif", body, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task AjouterSolde_FinancierSansUpdateWalletVirtuel_Retourne403()
+        {
+            var previousRoles = TestAuthHandler.Roles;
+            var previousPermissions = TestAuthHandler.Permissions;
+            try
+            {
+                TestAuthHandler.Roles = new[] { "Admin", "SuperAdmin" };
+                TestAuthHandler.Permissions = Array.Empty<string>();
+                var (_, walletId) = await CreateAgentWithWalletVirtuelAsync();
+
+                TestAuthHandler.Roles = new[] { "Financier" };
+                TestAuthHandler.Permissions = Array.Empty<string>();
+
+                var response = await _client.PutAsJsonAsync(
+                    $"/api/WalletVirtuelAgent/{walletId}/ajouter-solde",
+                    new WalletVirtuelAgentAjouterSoldeDto { Montant = 50m, Observation = "Financier interdit" });
+
+                Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+                var body = await response.Content.ReadAsStringAsync();
+                Assert.Contains("UPDATE_WALLET_VIRTUEL", body, StringComparison.Ordinal);
+            }
+            finally
+            {
+                TestAuthHandler.Roles = previousRoles;
+                TestAuthHandler.Permissions = previousPermissions;
+            }
         }
     }
 }

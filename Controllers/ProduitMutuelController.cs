@@ -91,6 +91,9 @@ namespace ProsocAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ProduitMutuelReadDto>> Create([FromBody] ProduitMutuelCreateDto createDto, CancellationToken ct = default)
         {
+            if (!HasPermission("CREATE_PRODUIT_MUTUEL"))
+                return ForbiddenPermission("CREATE_PRODUIT_MUTUEL");
+
             try
             {
                 var produit = MapFromCreateDto(createDto);
@@ -112,6 +115,9 @@ namespace ProsocAPI.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult<ProduitMutuelReadDto>> Update(int id, [FromBody] ProduitMutuelUpdateDto updateDto, CancellationToken ct = default)
         {
+            if (!HasPermission("UPDATE_PRODUIT_MUTUEL"))
+                return ForbiddenPermission("UPDATE_PRODUIT_MUTUEL");
+
             try
             {
                 var produit = MapFromUpdateDto(updateDto);

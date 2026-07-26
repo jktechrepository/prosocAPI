@@ -32,7 +32,14 @@ namespace ProsocAPI.Services
                 var maintenant = DateTime.Now;
                 var debutMois = new DateTime(maintenant.Year, maintenant.Month, 1);
                 var debutMoisPrecedent = debutMois.AddMonths(-1);
-                var finMoisPrecedent = debutMois.AddDays(-1);
+                // Fenêtre MTD mois précédent : même jour relatif (borné si mois plus court)
+                var jourEquivalent = Math.Min(
+                    maintenant.Day,
+                    DateTime.DaysInMonth(debutMoisPrecedent.Year, debutMoisPrecedent.Month));
+                var finExclusiveMoisPrecedentMtd = new DateTime(
+                    debutMoisPrecedent.Year,
+                    debutMoisPrecedent.Month,
+                    jourEquivalent).AddDays(1);
 
                 // KPIs principaux
                 var totalAffilies = await _db.Affilies.CountAsync(a => a.Statut, ct);
@@ -40,10 +47,12 @@ namespace ProsocAPI.Services
                 var agentsInactifs = await _db.Agents.CountAsync(a => !a.Statut, ct);
                 var affiliesInactifs = await _db.Affilies.CountAsync(a => !a.Statut, ct);
 
-                // Collectes du mois en cours (tous agents, montant en devise principale)
+                // Collectes MTD mois en cours (1er → maintenant), devise principale
                 var collectesMois = await _db.Collectes
                     .AsNoTracking()
-                    .Where(c => c.DateCollecte >= debutMois && c.Statut)
+                    .Where(c => c.DateCollecte >= debutMois
+                                && c.DateCollecte <= maintenant
+                                && c.Statut)
                     .ToListAsync(ct);
 
                 var devisePrincipale = await _db.Devises
@@ -71,10 +80,12 @@ namespace ProsocAPI.Services
                         ct)
                     : mouvementsCommissionsMois.Sum(m => m.Montant);
 
-                // Collectes du mois précédent pour calculer la progression
+                // Collectes MTD mois précédent (même fenêtre 1 → jour relatif) pour la progression
                 var collectesMoisPrecedent = await _db.Collectes
                     .AsNoTracking()
-                    .Where(c => c.DateCollecte >= debutMoisPrecedent && c.DateCollecte < debutMois && c.Statut)
+                    .Where(c => c.DateCollecte >= debutMoisPrecedent
+                                && c.DateCollecte < finExclusiveMoisPrecedentMtd
+                                && c.Statut)
                     .ToListAsync(ct);
 
                 var totalCollectesMoisPrecedent = collectesMoisPrecedent.Sum(CollecteStatutPaiementRegles.MontantEnDevisePrincipale);

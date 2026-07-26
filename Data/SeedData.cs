@@ -300,6 +300,7 @@ namespace Prosoc.Data
                         new Permission { Nom = "READ_DEVISE", Description = "Voir les devises", DateCreation = DateTime.Now },
                         new Permission { Nom = "UPDATE_DEVISE", Description = "Modifier une devise", DateCreation = DateTime.Now },
                         new Permission { Nom = "DELETE_DEVISE", Description = "Supprimer une devise", DateCreation = DateTime.Now },
+                        new Permission { Nom = "CREATE_TAUX_CHANGE", Description = "Créer un taux de change", DateCreation = DateTime.Now },
                         
                         new Permission { Nom = "CREATE_CATEGORIE_ADHESION", Description = "Créer une catégorie d'adhésion", DateCreation = DateTime.Now },
                         new Permission { Nom = "READ_CATEGORIE_ADHESION", Description = "Voir les catégories d'adhésion", DateCreation = DateTime.Now },
@@ -321,6 +322,7 @@ namespace Prosoc.Data
                         new Permission { Nom = "MANAGE_SUPERVISION", Description = "Gérer la supervision d'équipe", DateCreation = DateTime.Now },
                         new Permission { Nom = "ACCESS_DASHBOARD_SUPERVISEUR", Description = "Accéder au dashboard superviseur", DateCreation = DateTime.Now },
                         new Permission { Nom = "MANAGE_OBJECTIFS", Description = "Gérer les objectifs d'équipe", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_TARGET_AGENT", Description = "Voir les objectifs / TargetAgent", DateCreation = DateTime.Now },
                         new Permission { Nom = "VALIDATE_PERFORMANCE", Description = "Valider les performances des agents", DateCreation = DateTime.Now },
                         
                         // Permissions Dashboard et Rapports
@@ -357,6 +359,8 @@ namespace Prosoc.Data
                         new Permission { Nom = "READ_PENALITE_AFFILIE", Description = "Consulter ses pénalités de retard", DateCreation = DateTime.Now },
                         new Permission { Nom = "PAIEMENT_AFFILIE", Description = "Payer cotisations et souscriptions", DateCreation = DateTime.Now },
                         new Permission { Nom = "READ_SOUSCRIPTION_PRESTATION", Description = "Consulter ses souscriptions prestation", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_SOUSCRIPTION_PRESTATION", Description = "Modifier une souscription prestation", DateCreation = DateTime.Now },
+                        new Permission { Nom = "DELETE_SOUSCRIPTION_PRESTATION", Description = "Supprimer une souscription prestation", DateCreation = DateTime.Now },
                         new Permission { Nom = "CREATE_DEMANDE_BON_ENVOI", Description = "Demander un bon d'envoi", DateCreation = DateTime.Now },
                         new Permission { Nom = "READ_DEMANDE_BON_ENVOI", Description = "Consulter ses demandes de bon d'envoi", DateCreation = DateTime.Now },
                         new Permission { Nom = "CONFIRM_DEMANDE_BON_ENVOI", Description = "Confirmer ou rejeter une demande de bon d'envoi", DateCreation = DateTime.Now },
@@ -369,6 +373,9 @@ namespace Prosoc.Data
                         new Permission { Nom = "OPEN_CAISSIER_SESSION", Description = "Ouvrir une session de caisse", DateCreation = DateTime.Now },
                         new Permission { Nom = "CLOSE_CAISSIER_SESSION", Description = "Clôturer une session de caisse", DateCreation = DateTime.Now },
                         new Permission { Nom = "READ_CAISSIER_SESSION", Description = "Consulter session et mouvements de caisse", DateCreation = DateTime.Now },
+                        new Permission { Nom = "CREATE_DEMANDE_RETRAIT_AGENT", Description = "Créer une demande de retrait agent", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_DEMANDE_RETRAIT_AGENT", Description = "Consulter les demandes de retrait agent", DateCreation = DateTime.Now },
+                        new Permission { Nom = "VALIDATE_DEMANDE_RETRAIT_AGENT", Description = "Valider une demande de retrait agent et générer le jeton", DateCreation = DateTime.Now },
                         new Permission { Nom = "CONFIRM_RETRAIT_AGENT", Description = "Payer un retrait agent au guichet", DateCreation = DateTime.Now },
                         new Permission { Nom = "READ_PERCEPTION_VIRTUAL", Description = "Consulter les collectes compte virtuel à percevoir", DateCreation = DateTime.Now },
                         new Permission { Nom = "CONFIRM_PERCEPTION_VIRTUAL", Description = "Confirmer la perception physique des collectes compte virtuel", DateCreation = DateTime.Now },
@@ -935,11 +942,15 @@ namespace Prosoc.Data
                 await MigrateAssureurRolePermissionsAsync(context, logger);
                 await MigrateAgentHopitalRolePermissionsAsync(context, logger);
                 await EnsureReadStatistiquesPermissionAsync(context, logger);
+                await EnsureReadTargetAgentPermissionAsync(context, logger);
+                await EnsureCreateTauxChangePermissionAsync(context, logger);
+                await EnsureSouscriptionPrestationWritePermissionsAsync(context, logger);
                 await EnsureParametresMetierPermissionsAsync(context, logger);
                 await MigrateFinancierRolePermissionsAsync(context, logger);
                 await MigratePercepteurRolePermissionsAsync(context, logger);
                 await EnsureDashboardCaissierPermissionAsync(context, logger);
                 await EnsureCaisseSessionPermissionsAsync(context, logger);
+                await EnsureDemandeRetraitAgentPermissionsAsync(context, logger);
                 await EnsurePerceptionVirtuellePermissionsAsync(context, logger);
                 await MigrateCaissierRolePermissionsAsync(context, logger);
                 await EnsureChefEquipePermissionsAsync(context, logger);
@@ -1494,6 +1505,8 @@ namespace Prosoc.Data
             "CREATE_WALLET_MOVEMENT",
             "READ_TRANSACTION",
             "CREATE_TRANSACTION",
+            "CREATE_DEMANDE_RETRAIT_AGENT",
+            "READ_DEMANDE_RETRAIT_AGENT",
             // Dashboard agent
             "ACCESS_DASHBOARD_AGENT",
             // Bon d'envoi (workflow terrain)
@@ -1734,6 +1747,8 @@ namespace Prosoc.Data
                 "MANAGE_OBJECTIFS",
                 "VALIDATE_PERFORMANCE",
                 "ACCESS_DASHBOARD_SUPERVISEUR",
+                // Validation demandes de retrait agent (génération jeton)
+                "VALIDATE_DEMANDE_RETRAIT_AGENT",
                 // Wallet virtuel agents (ajouter-solde / modifier-solde-wallet-agents)
                 "UPDATE_WALLET_VIRTUEL",
                 // Rapports performance équipe
@@ -2216,6 +2231,7 @@ namespace Prosoc.Data
             "CREATE_DEVISE",
             "READ_DEVISE",
             "UPDATE_DEVISE",
+            "CREATE_TAUX_CHANGE",
             "CREATE_CATEGORIE_AGENT",
             "READ_CATEGORIE_AGENT",
             "UPDATE_CATEGORIE_AGENT",
@@ -2375,26 +2391,34 @@ namespace Prosoc.Data
             "CREATE_TRANSACTION",
             "UPDATE_TRANSACTION",
             // Catalogue financier
+            "CREATE_FRAIS",
             "READ_FRAIS",
             "UPDATE_FRAIS",
             "READ_DEVISE",
+            "CREATE_DEVISE",
+            "CREATE_TAUX_CHANGE",
             // Adhésion & affilié (flux guichet)
             "CREATE_ADHESION",
             "READ_ADHESION",
             "UPDATE_ADHESION",
             "READ_AFFILIE",
-            "UPDATE_AFFILIE",
             "READ_DEPENDANT",
             "READ_TYPE_ADHESION",
             "READ_CATEGORIE_ADHESION",
             "READ_COTISATION_AFFILIE",
             // Contexte membres (consultation)
             "READ_SOUSCRIPTION_PRESTATION",
+            "UPDATE_SOUSCRIPTION_PRESTATION",
+            "DELETE_SOUSCRIPTION_PRESTATION",
             "READ_ARRIERES_AFFILIE",
             "READ_PENALITE_AFFILIE",
             "READ_PRESTATION",
             "READ_PRODUIT_MUTUEL",
+            "CREATE_PRODUIT_MUTUEL",
+            "UPDATE_PRODUIT_MUTUEL",
             "READ_PRODUIT_ASSUREUR",
+            "CREATE_PRODUIT_ASSUREUR",
+            "UPDATE_PRODUIT_ASSUREUR",
             // Géographie & hiérarchie (filtres rapports)
             "READ_PROVINCE",
             "READ_COMMUNE",
@@ -2405,6 +2429,8 @@ namespace Prosoc.Data
             "GENERATE_RAPPORT",
             "EXPORT_DATA",
             "READ_STATISTIQUES",
+            // Objectifs agents (consultation seule)
+            "READ_TARGET_AGENT",
             // Perception compte virtuel (consultation / réconciliation)
             "READ_PERCEPTION_VIRTUAL",
             "CONFIRM_PERCEPTION_VIRTUAL",
@@ -2570,6 +2596,9 @@ namespace Prosoc.Data
                 "OPEN_CAISSIER_SESSION",
                 "CLOSE_CAISSIER_SESSION",
                 "READ_CAISSIER_SESSION",
+                "CREATE_DEMANDE_RETRAIT_AGENT",
+                "READ_DEMANDE_RETRAIT_AGENT",
+                "VALIDATE_DEMANDE_RETRAIT_AGENT",
                 "CONFIRM_RETRAIT_AGENT",
                 // Clôture & rapports
                 "GENERATE_RAPPORT",
@@ -2592,6 +2621,72 @@ namespace Prosoc.Data
                 {
                     Nom = nom,
                     Description = "Consulter les statistiques",
+                    Categorie = categorie,
+                    Action = action,
+                    Statut = true,
+                    DateCreation = DateTime.Now
+                });
+                await context.SaveChangesAsync();
+                logger.LogInformation("Permission {Permission} créée.", nom);
+            }
+        }
+
+        private static async Task EnsureReadTargetAgentPermissionAsync(ProsocDbContext context, ILogger logger)
+        {
+            const string nom = "READ_TARGET_AGENT";
+            if (!await context.Permissions.AnyAsync(p => p.Nom == nom))
+            {
+                var (categorie, action) = ParsePermissionCategorieAndAction(nom);
+                context.Permissions.Add(new Permission
+                {
+                    Nom = nom,
+                    Description = "Voir les objectifs / TargetAgent",
+                    Categorie = categorie,
+                    Action = action,
+                    Statut = true,
+                    DateCreation = DateTime.Now
+                });
+                await context.SaveChangesAsync();
+                logger.LogInformation("Permission {Permission} créée.", nom);
+            }
+        }
+
+        private static async Task EnsureCreateTauxChangePermissionAsync(ProsocDbContext context, ILogger logger)
+        {
+            const string nom = "CREATE_TAUX_CHANGE";
+            if (!await context.Permissions.AnyAsync(p => p.Nom == nom))
+            {
+                var (categorie, action) = ParsePermissionCategorieAndAction(nom);
+                context.Permissions.Add(new Permission
+                {
+                    Nom = nom,
+                    Description = "Créer un taux de change",
+                    Categorie = categorie,
+                    Action = action,
+                    Statut = true,
+                    DateCreation = DateTime.Now
+                });
+                await context.SaveChangesAsync();
+                logger.LogInformation("Permission {Permission} créée.", nom);
+            }
+        }
+
+        private static async Task EnsureSouscriptionPrestationWritePermissionsAsync(ProsocDbContext context, ILogger logger)
+        {
+            foreach (var (nom, description) in new[]
+            {
+                ("UPDATE_SOUSCRIPTION_PRESTATION", "Modifier une souscription prestation"),
+                ("DELETE_SOUSCRIPTION_PRESTATION", "Supprimer une souscription prestation")
+            })
+            {
+                if (await context.Permissions.AnyAsync(p => p.Nom == nom))
+                    continue;
+
+                var (categorie, action) = ParsePermissionCategorieAndAction(nom);
+                context.Permissions.Add(new Permission
+                {
+                    Nom = nom,
+                    Description = description,
                     Categorie = categorie,
                     Action = action,
                     Statut = true,
@@ -2685,6 +2780,36 @@ namespace Prosoc.Data
                 ("CLOSE_CAISSIER_SESSION", "Clôturer une session de caisse"),
                 ("READ_CAISSIER_SESSION", "Consulter session et mouvements de caisse"),
                 ("CONFIRM_RETRAIT_AGENT", "Payer un retrait agent au guichet")
+            };
+
+            foreach (var (nom, description) in permissions)
+            {
+                if (await context.Permissions.AnyAsync(p => p.Nom == nom))
+                    continue;
+
+                var (categorie, action) = ParsePermissionCategorieAndAction(nom);
+                context.Permissions.Add(new Permission
+                {
+                    Nom = nom,
+                    Description = description,
+                    Categorie = categorie,
+                    Action = action,
+                    Statut = true,
+                    DateCreation = DateTime.Now
+                });
+                logger.LogInformation("Permission {Permission} créée.", nom);
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task EnsureDemandeRetraitAgentPermissionsAsync(ProsocDbContext context, ILogger logger)
+        {
+            var permissions = new (string Nom, string Description)[]
+            {
+                ("CREATE_DEMANDE_RETRAIT_AGENT", "Créer une demande de retrait agent"),
+                ("READ_DEMANDE_RETRAIT_AGENT", "Consulter les demandes de retrait agent"),
+                ("VALIDATE_DEMANDE_RETRAIT_AGENT", "Valider une demande de retrait agent et générer le jeton")
             };
 
             foreach (var (nom, description) in permissions)

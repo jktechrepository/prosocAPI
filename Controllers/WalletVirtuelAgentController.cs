@@ -158,6 +158,9 @@ namespace ProsocAPI.Controllers
             [FromBody] WalletVirtuelAgentAjouterSoldeDto dto,
             CancellationToken ct = default)
         {
+            if (!HasPermission("UPDATE_WALLET_VIRTUEL"))
+                return ForbiddenPermission("UPDATE_WALLET_VIRTUEL");
+
             if (dto == null)
                 return BadRequest("Le corps de la requête est obligatoire.");
 
@@ -236,14 +239,19 @@ namespace ProsocAPI.Controllers
                 return BadRequest(new { Message = $"Un wallet virtuel existe déjà pour l'agent ID {createDto.AgentId}" });
             }
 
-            if (createDto.SoldeInitial > 0
-                && !await AgentQueryableExtensions.CanRechargeWalletVirtuelAsync(_db, User, createDto.AgentId, ct))
+            if (createDto.SoldeInitial > 0)
             {
-                return StatusCode(StatusCodes.Status403Forbidden, new
+                if (!HasPermission("UPDATE_WALLET_VIRTUEL"))
+                    return ForbiddenPermission("UPDATE_WALLET_VIRTUEL");
+
+                if (!await AgentQueryableExtensions.CanRechargeWalletVirtuelAsync(_db, User, createDto.AgentId, ct))
                 {
-                    codeErreur = "HIERARCHIE_RECHARGE_INTERDITE",
-                    message = "Vous ne pouvez créditer le wallet virtuel que pour un agent de niveau hiérarchique inférieur au vôtre."
-                });
+                    return StatusCode(StatusCodes.Status403Forbidden, new
+                    {
+                        codeErreur = "HIERARCHIE_RECHARGE_INTERDITE",
+                        message = "Vous ne pouvez créditer le wallet virtuel que pour un agent de niveau hiérarchique inférieur au vôtre."
+                    });
+                }
             }
 
             int deviseId;
@@ -311,6 +319,9 @@ namespace ProsocAPI.Controllers
             [FromBody] List<WalletVirtuelAgentModifierItemDto> items,
             CancellationToken ct = default)
         {
+            if (!HasPermission("UPDATE_WALLET_VIRTUEL"))
+                return ForbiddenPermission("UPDATE_WALLET_VIRTUEL");
+
             if (items == null || items.Count == 0)
                 return BadRequest("La liste des modifications est obligatoire.");
 
@@ -456,6 +467,9 @@ namespace ProsocAPI.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult<WalletVirtuelAgentReadDto>> Update(int id, [FromBody] WalletVirtuelAgentUpdateDto updateDto, CancellationToken ct = default)
         {
+            if (!HasPermission("UPDATE_WALLET_VIRTUEL"))
+                return ForbiddenPermission("UPDATE_WALLET_VIRTUEL");
+
             var wallet = await _db.WalletsVirtuelsAgents
                 .FirstOrDefaultAsync(w => w.IdWalletVirtuelAgent == id, ct);
 

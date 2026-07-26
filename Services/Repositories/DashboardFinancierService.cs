@@ -499,6 +499,169 @@ namespace ProsocAPI.Services.Repositories
             }
         }
 
+        public async Task<ObjectifsAgentsFinancierDto> GetObjectifsAgentsAsync(
+            int? mois = null,
+            int? annee = null,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                var now = DateTime.Now;
+                var moisEffectif = mois is >= 1 and <= 12 ? mois.Value : now.Month;
+                var anneeEffectif = annee is >= 2000 and <= 2100 ? annee.Value : now.Year;
+                var debutMois = new DateTime(anneeEffectif, moisEffectif, 1);
+                var finMois = debutMois.AddMonths(1);
+
+                var targetsMensuels = await _db.TargetsAgents
+                    .AsNoTracking()
+                    .Include(t => t.Role)
+                    .Where(t => t.Statut && t.Periodicite == PeriodiciteTarget.Mensuelle)
+                    .OrderByDescending(t => t.DateCreation)
+                    .ToListAsync(ct);
+
+                // Un target actif par rôle (le plus récent)
+                var targetParRole = targetsMensuels
+                    .GroupBy(t => t.RoleId)
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                var result = new ObjectifsAgentsFinancierDto
+                {
+                    Mois = moisEffectif,
+                    Annee = anneeEffectif
+                };
+
+                if (targetParRole.Count == 0)
+                    return result;
+
+                var roleIdsCibles = targetParRole.Keys.ToHashSet();
+
+                var agentsActifs = await _db.Agents
+                    .AsNoTracking()
+                    .Where(a => a.Statut)
+                    .Select(a => new { a.IdAgent, a.NomComplet, a.RoleAgent })
+                    .ToListAsync(ct);
+
+                if (agentsActifs.Count == 0)
+                    return result;
+
+                var agentIds = agentsActifs.Select(a => a.IdAgent).ToList();
+
+                var roleIdParAgent = await _db.Utilisateurs
+                    .AsNoTracking()
+                    .Where(u => u.AgentId != null && agentIds.Contains(u.AgentId.Value) && u.RoleId != null)
+                    .Select(u => new { AgentId = u.AgentId!.Value, RoleId = u.RoleId!.Value })
+                    .ToListAsync(ct);
+
+                var roleIdFromUser = roleIdParAgent
+                    .GroupBy(x => x.AgentId)
+                    .ToDictionary(g => g.Key, g => g.First().RoleId);
+
+                var roleNomsFallback = agentsActifs
+                    .Where(a => !roleIdFromUser.ContainsKey(a.IdAgent) && !string.IsNullOrWhiteSpace(a.RoleAgent))
+                    .Select(a => a.RoleAgent!.Trim())
+                    .Distinct()
+                    .ToList();
+
+                var rolesByNom = roleNomsFallback.Count == 0
+                    ? new Dictionary<string, int>(StringComparer.Ordinal)
+                    : (await _db.Roles
+                        .AsNoTracking()
+                        .Where(r => r.Statut && roleNomsFallback.Contains(r.Nom))
+                        .Select(r => new { r.Nom, r.IdRole })
+                        .ToListAsync(ct))
+                        .ToDictionary(r => r.Nom, r => r.IdRole, StringComparer.Ordinal);
+
+                var agentsAvecTarget = new List<(int AgentId, string AgentNom, int RoleId, TargetAgent Target)>();
+
+                foreach (var agent in agentsActifs)
+                {
+                    int? roleId = null;
+                    if (roleIdFromUser.TryGetValue(agent.IdAgent, out var fromUser))
+                        roleId = fromUser;
+                    else if (!string.IsNullOrWhiteSpace(agent.RoleAgent)
+                             && rolesByNom.TryGetValue(agent.RoleAgent.Trim(), out var fromNom))
+                        roleId = fromNom;
+
+                    if (!roleId.HasValue || !roleIdsCibles.Contains(roleId.Value))
+                        continue;
+
+                    agentsAvecTarget.Add((agent.IdAgent, agent.NomComplet, roleId.Value, targetParRole[roleId.Value]));
+                }
+
+                if (agentsAvecTarget.Count == 0)
+                    return result;
+
+                var agentIdsRapport = agentsAvecTarget.Select(a => a.AgentId).ToList();
+                var adhesionsParAgent = await _db.Adhesions
+                    .AsNoTracking()
+                    .Where(a => a.AgentId != null
+                        && agentIdsRapport.Contains(a.AgentId.Value)
+                        && a.DateCreation >= debutMois
+                        && a.DateCreation < finMois)
+                    .GroupBy(a => a.AgentId!.Value)
+                    .Select(g => new { AgentId = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.AgentId, x => x.Count, ct);
+
+                var details = agentsAvecTarget.Select(a =>
+                {
+                    var realise = adhesionsParAgent.TryGetValue(a.AgentId, out var c) ? c : 0;
+                    var objectif = a.Target.Nombre;
+                    return new ObjectifAgentDetailDto
+                    {
+                        AgentId = a.AgentId,
+                        AgentNom = a.AgentNom,
+                        RoleId = a.RoleId,
+                        RoleNom = a.Target.Role?.Nom ?? string.Empty,
+                        ObjectifAdhesions = objectif,
+                        RealiseAdhesions = realise,
+                        Progression = objectif > 0
+                            ? Math.Round((decimal)realise / objectif * 100, 2)
+                            : 0
+                    };
+                })
+                .OrderByDescending(d => d.Progression)
+                .ThenBy(d => d.AgentNom)
+                .ToList();
+
+                var synthese = agentsAvecTarget
+                    .GroupBy(a => a.RoleId)
+                    .Select(g =>
+                    {
+                        var target = g.First().Target;
+                        var nombreAgents = g.Count();
+                        var objectifUnitaire = target.Nombre;
+                        var objectifTotal = objectifUnitaire * nombreAgents;
+                        var realiseTotal = g.Sum(a =>
+                            adhesionsParAgent.TryGetValue(a.AgentId, out var c) ? c : 0);
+
+                        return new ObjectifAgentRoleSyntheseDto
+                        {
+                            RoleId = g.Key,
+                            RoleNom = target.Role?.Nom ?? string.Empty,
+                            LibelleTarget = target.LibelleTarget,
+                            ObjectifUnitaire = objectifUnitaire,
+                            NombreAgents = nombreAgents,
+                            ObjectifTotal = objectifTotal,
+                            RealiseTotal = realiseTotal,
+                            Progression = objectifTotal > 0
+                                ? Math.Round((decimal)realiseTotal / objectifTotal * 100, 2)
+                                : 0
+                        };
+                    })
+                    .OrderBy(s => s.RoleNom)
+                    .ToList();
+
+                result.SyntheseParRole = synthese;
+                result.DetailParAgent = details;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la récupération des objectifs agents (Financier)");
+                throw;
+            }
+        }
+
         public async Task<List<RevenuGeographiqueDto>> GetRevenusParRegionAsync(CancellationToken ct = default)
         {
             try

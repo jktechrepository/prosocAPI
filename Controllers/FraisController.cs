@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
@@ -129,6 +130,9 @@ namespace ProsocAPI.Controllers
         [Authorize(Roles = "Admin,SuperAdmin,IT,Financier")]
         public async Task<ActionResult<Frais>> Create([FromBody] CreateFraisDto dto)
         {
+            if (!HasPermission("CREATE_FRAIS"))
+                return ForbiddenPermission("CREATE_FRAIS");
+
             try
             {
                 var frais = new Frais
@@ -329,6 +333,17 @@ namespace ProsocAPI.Controllers
             var userIdClaim = User.FindFirst("IdUtilisateur")?.Value;
             return int.TryParse(userIdClaim, out var userId) && userId > 0 ? userId : null; // 🆕 Retourne null si pas authentifié
         }
+
+        private bool HasPermission(string permission)
+        {
+            if (User.IsInRole("Admin") || User.IsInRole("SuperAdmin"))
+                return true;
+
+            return User.HasClaim("permission", permission);
+        }
+
+        private ObjectResult ForbiddenPermission(string permission) =>
+            StatusCode(StatusCodes.Status403Forbidden, new { message = $"Permission requise : {permission}" });
     }
 
     // DTOs pour les opérations sur les frais

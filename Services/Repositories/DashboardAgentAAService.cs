@@ -264,13 +264,7 @@ namespace ProsocAPI.Services.Repositories
         private IQueryable<Adhesion> QueryAdhesionsForAgent(int agentId) =>
             _db.Adhesions.AsNoTracking().Where(a => a.AgentId == agentId && a.Statut);
 
-        private static bool EstDossierValide(string? statutDossier)
-        {
-            if (string.IsNullOrWhiteSpace(statutDossier))
-                return false;
-
-            return string.Equals(statutDossier, AdhesionNiveau2Regles.StatutValide, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(statutDossier, "VALIDE", StringComparison.OrdinalIgnoreCase);
-        }
+        private static bool EstDossierValide(string? statutDossier) =>
+            AdhesionStatutDossierRegles.EstValide(statutDossier);
     }
 }

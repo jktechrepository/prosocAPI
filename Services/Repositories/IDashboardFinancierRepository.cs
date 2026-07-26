@@ -33,7 +33,13 @@ namespace ProsocAPI.Services.Repositories
         
         // Objectifs financiers
         Task<List<ObjectifFinancierDto>> GetObjectifsFinanciersAsync(CancellationToken ct = default);
-        
+
+        /// <summary>Reporting TargetAgent adhésions : synthèse par rôle + détail par agent.</summary>
+        Task<ObjectifsAgentsFinancierDto> GetObjectifsAgentsAsync(
+            int? mois = null,
+            int? annee = null,
+            CancellationToken ct = default);
+
         // Répartition géographique des revenus
         Task<List<RevenuGeographiqueDto>> GetRevenusParRegionAsync(CancellationToken ct = default);
         

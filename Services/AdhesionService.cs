@@ -51,6 +51,7 @@ namespace ProsocAPI.Services
 
         public async Task<Adhesion> CreateAsync(Adhesion entity, CancellationToken ct = default)
         {
+            entity.StatutDossier = AdhesionStatutDossierRegles.EnAttente;
             _db.Adhesions.Add(entity);
             await _db.SaveChangesAsync(ct);
             return entity;
@@ -69,6 +70,8 @@ namespace ProsocAPI.Services
 
             try
             {
+                adhesion.StatutDossier = AdhesionStatutDossierRegles.EnAttente;
+
                 var existingAffilie = await FindExistingAffilieAsync(affilie, ct);
 
                 if (existingAffilie != null)
@@ -294,7 +297,7 @@ namespace ProsocAPI.Services
             if (existing == null)
                 return null;
 
-            existing.StatutDossier = entity.StatutDossier;
+            existing.StatutDossier = AdhesionStatutDossierRegles.Normaliser(entity.StatutDossier);
             existing.AffilieId = entity.AffilieId;
             existing.TypeAdhesionId = entity.TypeAdhesionId;
             existing.AgentId = entity.AgentId;
@@ -475,7 +478,7 @@ namespace ProsocAPI.Services
                 if (existingAdhesion == null)
                     throw new AdhesionNotFoundException(adhesionId);
 
-                if (existingAdhesion.StatutDossier != "EN ATTENTE")
+                if (!AdhesionStatutDossierRegles.EstEnAttente(existingAdhesion.StatutDossier))
                     throw new AdhesionNotInWaitingStateException(adhesionId);
 
                 // 2. Valider que l'affilié a toutes les informations d'adresse requises
@@ -556,10 +559,12 @@ namespace ProsocAPI.Services
             existingAffilie.NomComplet = $"{updatedAffilie.Nom} {updatedAffilie.Prenom}".Trim();
         }
 
-        private async Task UpdateAdhesionAsync(Adhesion existingAdhesion, Adhesion updatedAdhesion, CancellationToken ct)
+        private Task UpdateAdhesionAsync(Adhesion existingAdhesion, Adhesion _, CancellationToken ct)
         {
-            existingAdhesion.StatutDossier = updatedAdhesion.StatutDossier;
+            // StatutDossier : transition contrôlée uniquement via niveau-2-encodeur (valider).
+            // Le body UpdateWithAffilie ne peut plus forcer un statut libre.
             existingAdhesion.DateModification = DateTime.Now;
+            return Task.CompletedTask;
         }
 
         private async Task ManageSouscriptionsAsync(
@@ -715,10 +720,7 @@ namespace ProsocAPI.Services
                 if (adhesion == null)
                     throw new AdhesionNotFoundException(adhesionId);
 
-                if (!string.Equals(
-                        adhesion.StatutDossier?.Trim(),
-                        AdhesionNiveau2Regles.StatutEnAttente,
-                        StringComparison.OrdinalIgnoreCase))
+                if (!AdhesionStatutDossierRegles.EstEnAttente(adhesion.StatutDossier))
                 {
                     throw new AdhesionNotInWaitingStateException(adhesionId);
                 }
@@ -738,7 +740,7 @@ namespace ProsocAPI.Services
 
                 if (input.Valider)
                 {
-                    adhesion.StatutDossier = AdhesionNiveau2Regles.StatutValide;
+                    adhesion.StatutDossier = AdhesionStatutDossierRegles.Valide;
                     adhesion.DateModification = DateTime.Now;
                 }
 

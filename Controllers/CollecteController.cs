@@ -296,6 +296,8 @@ namespace ProsocAPI.Controllers
                     MontantRecu = createDto.MontantRecu,
                     MontantAttendu = createDto.MontantAttendu,
                     DeviseId = createDto.DeviseId,
+                    Mois = createDto.Mois,
+                    Annee = createDto.Annee,
                     DateCollecte = DateTime.Now,
                     Observation = createDto.Observation,
                     Statut = createDto.Statut,

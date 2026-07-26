@@ -105,4 +105,72 @@ public class TargetAgentIntegrationTests : IClassFixture<CustomWebApplicationFac
         Assert.Equal(77, created!.Nombre);
         Assert.Equal(PeriodiciteTarget.Journaliere, created.Periodicite);
     }
+
+    [Fact]
+    public async Task GetActifs_AsFinancierWithReadTargetAgent_ReturnsOk()
+    {
+        var previousRoles = TestAuthHandler.Roles;
+        var previousPermissions = TestAuthHandler.Permissions;
+        try
+        {
+            TestAuthHandler.Roles = new[] { "Financier" };
+            TestAuthHandler.Permissions = new[] { "READ_TARGET_AGENT" };
+
+            var response = await _client.GetAsync("/api/TargetAgent/actifs");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+        finally
+        {
+            TestAuthHandler.Roles = previousRoles;
+            TestAuthHandler.Permissions = previousPermissions;
+        }
+    }
+
+    [Fact]
+    public async Task GetActifs_WithoutPermission_ReturnsForbidden()
+    {
+        var previousRoles = TestAuthHandler.Roles;
+        var previousPermissions = TestAuthHandler.Permissions;
+        try
+        {
+            TestAuthHandler.Roles = new[] { "Financier" };
+            TestAuthHandler.Permissions = Array.Empty<string>();
+
+            var response = await _client.GetAsync("/api/TargetAgent/actifs");
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+        finally
+        {
+            TestAuthHandler.Roles = previousRoles;
+            TestAuthHandler.Permissions = previousPermissions;
+        }
+    }
+
+    [Fact]
+    public async Task Create_AsFinancierWithReadOnly_ReturnsForbidden()
+    {
+        var previousRoles = TestAuthHandler.Roles;
+        var previousPermissions = TestAuthHandler.Permissions;
+        try
+        {
+            TestAuthHandler.Roles = new[] { "Financier" };
+            TestAuthHandler.Permissions = new[] { "READ_TARGET_AGENT" };
+
+            var response = await _client.PostAsJsonAsync("/api/TargetAgent", new TargetAgentCreateDto
+            {
+                RoleNom = "Agent (AA)",
+                LibelleTarget = "Financier ne doit pas créer",
+                Periodicite = PeriodiciteTarget.Mensuelle,
+                Nombre = 10,
+                Statut = false
+            });
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+        finally
+        {
+            TestAuthHandler.Roles = previousRoles;
+            TestAuthHandler.Permissions = previousPermissions;
+        }
+    }
 }

@@ -11,7 +11,8 @@ namespace ProsocAPI.Models.Core
         public int IdAdhesion { get; set; }
         
         [Required, StringLength(20)]
-        public string StatutDossier { get; set; } = string.Empty; // A, B, ou Validé
+        /// <summary>Canon : <c>EN ATTENTE</c> | <c>VALIDÉ</c> (voir <see cref="AdhesionStatutDossierRegles"/>).</summary>
+        public string StatutDossier { get; set; } = string.Empty;
 
         public int? AgentId { get; set; }
 

@@ -1256,7 +1256,7 @@ namespace ProsocAPI.Controllers
 
             var adhesion = new Adhesion
             {
-                StatutDossier = input.StatutDossier,
+                StatutDossier = AdhesionStatutDossierRegles.EnAttente,
                 TypeAdhesionId = input.TypeAdhesionId,
                 AgentId = terrainAgentId,
                 UtilisateurId = GetCurrentUserId(), // 🆕 Récupérer l'ID utilisateur connecté
@@ -2076,7 +2076,10 @@ namespace ProsocAPI.Controllers
                         {
                             case "statutdossier":
                                 if (filter.Operator == "eq")
-                                    query = query.Where(a => a.StatutDossier == filter.Value);
+                                {
+                                    var statutCanon = AdhesionStatutDossierRegles.Normaliser(filter.Value);
+                                    query = query.Where(a => a.StatutDossier == statutCanon);
+                                }
                                 break;
                             case "affilieid":
                                 if (int.TryParse(filter.Value, out int affilieId))
