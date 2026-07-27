@@ -163,6 +163,9 @@ namespace ProsocAPI.Controllers
             [FromBody] DemandeBonEnvoiConfirmerDto dto,
             CancellationToken ct = default)
         {
+            if (!HasPermission("CONFIRM_DEMANDE_BON_ENVOI"))
+                return ForbiddenPermission("CONFIRM_DEMANDE_BON_ENVOI");
+
             try
             {
                 var resultat = await _demandeBonEnvoiService.ConfirmerDemandeAsync(id, dto, ct);
@@ -354,6 +357,9 @@ namespace ProsocAPI.Controllers
         [HttpPost("valider-et-generer")]
         public async Task<ActionResult> ValiderEtGenerer([FromBody] DemandeBonEnvoiGenerationDto generationDto, CancellationToken ct = default)
         {
+            if (!HasPermission("CONFIRM_DEMANDE_BON_ENVOI"))
+                return ForbiddenPermission("CONFIRM_DEMANDE_BON_ENVOI");
+
             try
             {
                 if (generationDto.AgentId <= 0)

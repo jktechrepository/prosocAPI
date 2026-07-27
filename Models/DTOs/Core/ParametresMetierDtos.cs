@@ -6,6 +6,8 @@ namespace ProsocAPI.Models.DTOs.Core
         public int Fenetre1Fin { get; set; }
         public int Fenetre2DerniersJours { get; set; }
         public decimal MontantMinimumPartiel { get; set; }
+        public bool ExpirationAutomatiqueActivee { get; set; }
+        public int IntervalleExpirationMinutes { get; set; }
         public DateTime? DateModification { get; set; }
         public int? ModifieParUtilisateurId { get; set; }
         public string? ModifieParNom { get; set; }

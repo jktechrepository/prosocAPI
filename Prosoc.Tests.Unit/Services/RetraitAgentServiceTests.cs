@@ -623,6 +623,106 @@ public class RetraitAgentServiceTests
     }
 
     [Fact]
+    public async Task ExpireJetonsExpiresAsync_ExpiresValidatedUnusedTokens_AndReleasesSolde()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        await using var db = await CreateDbContextAsync(connection);
+        await SeedPrincipalWalletAsync(db, agentId: 1, soldeCourant: 100000m, soldeDisponible: 60000m);
+
+        var demandeExpiree = new DemandeRetraitAgent
+        {
+            AgentId = 1,
+            MontantDemande = 40000m,
+            TypeRetrait = "PARTIEL",
+            StatutDemande = "VALIDEE",
+            DateDemande = DateTime.Now.AddDays(-10)
+        };
+        var demandeEncoreValide = new DemandeRetraitAgent
+        {
+            AgentId = 1,
+            MontantDemande = 10000m,
+            TypeRetrait = "PARTIEL",
+            StatutDemande = "VALIDEE",
+            DateDemande = DateTime.Now
+        };
+        var demandeDejaTraitee = new DemandeRetraitAgent
+        {
+            AgentId = 1,
+            MontantDemande = 5000m,
+            TypeRetrait = "PARTIEL",
+            StatutDemande = "TRAITEE",
+            DateDemande = DateTime.Now.AddDays(-8)
+        };
+        db.DemandesRetraitAgents.AddRange(demandeExpiree, demandeEncoreValide, demandeDejaTraitee);
+        await db.SaveChangesAsync();
+
+        db.JetonsRetraits.AddRange(
+            new JetonRetrait
+            {
+                AgentId = 1,
+                DemandeRetraitId = demandeExpiree.IdDemande,
+                CodeJeton = "JRTEXP1",
+                MontantRetrait = 40000m,
+                DateEmission = DateTime.Now.AddDays(-10),
+                DateExpiration = DateTime.Now.AddDays(-1),
+                EstValide = true,
+                EstUtilise = false
+            },
+            new JetonRetrait
+            {
+                AgentId = 1,
+                DemandeRetraitId = demandeEncoreValide.IdDemande,
+                CodeJeton = "JRTVALID",
+                MontantRetrait = 10000m,
+                DateEmission = DateTime.Now,
+                DateExpiration = DateTime.Now.AddDays(7),
+                EstValide = true,
+                EstUtilise = false
+            },
+            new JetonRetrait
+            {
+                AgentId = 1,
+                DemandeRetraitId = demandeDejaTraitee.IdDemande,
+                CodeJeton = "JRTUSED",
+                MontantRetrait = 5000m,
+                DateEmission = DateTime.Now.AddDays(-8),
+                DateExpiration = DateTime.Now.AddDays(-1),
+                EstValide = true,
+                EstUtilise = true
+            });
+        await db.SaveChangesAsync();
+
+        var walletRepo = new WalletAgentService(db, Mock.Of<ILogger<WalletAgentService>>());
+        var service = new RetraitAgentService(
+            db,
+            Mock.Of<ILogger<RetraitAgentService>>(),
+            walletRepo,
+            new DeviseConversionService(db),
+            CreateHostEnvironmentMock(integrationTests: true).Object,
+            CreateParametresProviderMock().Object,
+            CreateCaisseServiceMock(integrationTests: true).Object);
+
+        var count = await service.ExpireJetonsExpiresAsync();
+
+        Assert.Equal(1, count);
+
+        var expiree = await db.DemandesRetraitAgents.FirstAsync(d => d.IdDemande == demandeExpiree.IdDemande);
+        Assert.Equal("REJETEE", expiree.StatutDemande);
+        Assert.Equal("Jeton de retrait expiré", expiree.MotifRejet);
+
+        var jetonExpire = await db.JetonsRetraits.FirstAsync(j => j.CodeJeton == "JRTEXP1");
+        Assert.False(jetonExpire.EstValide);
+
+        var encoreValide = await db.DemandesRetraitAgents.FirstAsync(d => d.IdDemande == demandeEncoreValide.IdDemande);
+        Assert.Equal("VALIDEE", encoreValide.StatutDemande);
+
+        var wallet = await db.WalletsAgents.FirstAsync(w => w.AgentId == 1);
+        Assert.Equal(100000m, wallet.SoldeCourant);
+        Assert.Equal(100000m, wallet.SoldeDisponible);
+    }
+
+    [Fact]
     public async Task UtiliserJetonRetrait_SansSessionOuverte_Production_RetourneSessionCaisseRequise()
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");

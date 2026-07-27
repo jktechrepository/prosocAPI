@@ -94,75 +94,30 @@ namespace ProsocAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<PrestationReadDto>> Create([FromBody] PrestationCreateDto createDto, CancellationToken ct = default)
+        public ActionResult<PrestationReadDto> Create([FromBody] PrestationCreateDto _)
         {
-            try
-            {
-                var prestation = new Prestation
-                {
-                    NomPrestation = createDto.NomPrestation,
-                    Description = createDto.Description,
-                    Periodicite = PeriodicitePrestationRegles.Normaliser(createDto.Periodicite, "Mensuel"),
-                    ProduitMutuelId = createDto.ProduitMutuelId,
-                    ProduitAssureurId = createDto.ProduitAssureurId,
-                    Montant = createDto.Montant.HasValue ? (decimal)createDto.Montant.Value : 0m,
-                    DeviseId = createDto.DeviseId ?? 2
-                };
-
-                var created = await _prestationRepository.CreateAsync(prestation, ct);
-                var withNav = await _prestationRepository.GetByIdAsync(created.IdPrestation, ct);
-
-                return CreatedAtAction(
-                    nameof(GetById),
-                    new { id = created.IdPrestation },
-                    PrestationHelpers.ToReadDto(withNav!));
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return PrestationsWriteForbidden();
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult<PrestationReadDto>> Update(int id, [FromBody] PrestationUpdateDto updateDto, CancellationToken ct = default)
+        public ActionResult<PrestationReadDto> Update(int id, [FromBody] PrestationUpdateDto _)
         {
-            try
-            {
-                var prestation = new Prestation
-                {
-                    NomPrestation = updateDto.NomPrestation,
-                    Description = updateDto.Description,
-                    Periodicite = string.IsNullOrWhiteSpace(updateDto.Periodicite)
-                        ? null
-                        : PeriodicitePrestationRegles.Normaliser(updateDto.Periodicite),
-                    ProduitMutuelId = updateDto.ProduitMutuelId,
-                    ProduitAssureurId = updateDto.ProduitAssureurId,
-                    Montant = updateDto.Montant.HasValue ? (decimal)updateDto.Montant.Value : 0m,
-                    DeviseId = updateDto.DeviseId ?? 2
-                };
-
-                var updated = await _prestationRepository.UpdateAsync(id, prestation, ct);
-                if (updated == null)
-                    return NotFound();
-
-                var withNav = await _prestationRepository.GetByIdAsync(id, ct);
-                return Ok(PrestationHelpers.ToReadDto(withNav!));
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return PrestationsWriteForbidden();
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult> Delete(int id, CancellationToken ct = default)
+        public ActionResult Delete(int id)
         {
-            var success = await _prestationRepository.DeleteAsync(id, ct);
-            if (!success)
-                return NotFound();
-            
-            return NoContent();
+            return PrestationsWriteForbidden();
         }
+
+        /// <summary>
+        /// Écriture standalone fermée : sync via CREATE/UPDATE Produit Mutuel / Assureur.
+        /// </summary>
+        private ActionResult PrestationsWriteForbidden() =>
+            ErrorResponse(
+                "Les prestations sont gérées via les endpoints Produit (CREATE/UPDATE_PRODUIT_MUTUEL | CREATE/UPDATE_PRODUIT_ASSUREUR).",
+                403);
 
         /// <summary>
         /// Récupère les prestations avec filtres avancés

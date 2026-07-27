@@ -150,6 +150,53 @@ public class OperationalRoleCollectePermissionsTests
     }
 
     [Fact]
+    public void ItRole_DoesNotIncludePrestationCreateUpdate()
+    {
+        var permissions = InvokePermissionWhitelist("GetItRolePermissionNames");
+        Assert.DoesNotContain("CREATE_PRESTATION", permissions);
+        Assert.DoesNotContain("UPDATE_PRESTATION", permissions);
+        Assert.Contains("READ_PRESTATION", permissions);
+        Assert.Contains("CREATE_PRODUIT_MUTUEL", permissions);
+        Assert.Contains("UPDATE_PRODUIT_MUTUEL", permissions);
+    }
+
+    [Fact]
+    public void ItRole_IncludesHopitalPartenaireCrud()
+    {
+        var permissions = InvokePermissionWhitelist("GetItRolePermissionNames");
+        Assert.Contains("CREATE_HOPITAL_PARTENAIRE", permissions);
+        Assert.Contains("READ_HOPITAL_PARTENAIRE", permissions);
+        Assert.Contains("UPDATE_HOPITAL_PARTENAIRE", permissions);
+        Assert.DoesNotContain("DELETE_HOPITAL_PARTENAIRE", permissions);
+    }
+
+    [Fact]
+    public void AdminRoleFilter_IncludesHopitalPartenaireCreateUpdateNotDelete()
+    {
+        var method = typeof(SeedData).GetMethod(
+            "FilterPermissionsForAdminRole",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(method);
+
+        var all = new[]
+        {
+            new Permission { Nom = "CREATE_HOPITAL_PARTENAIRE", Statut = true },
+            new Permission { Nom = "READ_HOPITAL_PARTENAIRE", Statut = true },
+            new Permission { Nom = "UPDATE_HOPITAL_PARTENAIRE", Statut = true },
+            new Permission { Nom = "DELETE_HOPITAL_PARTENAIRE", Statut = true },
+        };
+
+        var permissions = ((IEnumerable<Permission>)method!.Invoke(null, new object[] { all })!)
+            .Select(p => p.Nom)
+            .ToList();
+
+        Assert.Contains("CREATE_HOPITAL_PARTENAIRE", permissions);
+        Assert.Contains("READ_HOPITAL_PARTENAIRE", permissions);
+        Assert.Contains("UPDATE_HOPITAL_PARTENAIRE", permissions);
+        Assert.DoesNotContain("DELETE_HOPITAL_PARTENAIRE", permissions);
+    }
+
+    [Fact]
     public void CaissierRole_IncludesReadStatistiques()
     {
         var permissions = InvokePermissionWhitelist("GetCaissierRolePermissionNames");
@@ -243,6 +290,52 @@ public class OperationalRoleCollectePermissionsTests
         Assert.Contains("READ_DEMANDE_RETRAIT_AGENT", permissions);
         Assert.Contains("VALIDATE_DEMANDE_RETRAIT_AGENT", permissions);
         Assert.Contains("CONFIRM_RETRAIT_AGENT", permissions);
+    }
+
+    [Fact]
+    public void PercepteurRole_IncludesDemandeRetraitAgentReadValidateConfirm()
+    {
+        var permissions = InvokePermissionWhitelist("GetPercepteurRolePermissionNames");
+        Assert.Contains("READ_DEMANDE_RETRAIT_AGENT", permissions);
+        Assert.Contains("VALIDATE_DEMANDE_RETRAIT_AGENT", permissions);
+        Assert.Contains("CONFIRM_RETRAIT_AGENT", permissions);
+        Assert.DoesNotContain("CREATE_DEMANDE_RETRAIT_AGENT", permissions);
+    }
+
+    [Fact]
+    public void PercepteurRole_IncludesConfirmDemandeBonEnvoi()
+    {
+        var permissions = InvokePermissionWhitelist("GetPercepteurRolePermissionNames");
+        Assert.Contains("READ_DEMANDE_BON_ENVOI", permissions);
+        Assert.Contains("READ_BON_ENVOI", permissions);
+        Assert.Contains("CONFIRM_DEMANDE_BON_ENVOI", permissions);
+    }
+
+    [Fact]
+    public void PercepteurRole_IncludesCaisseSessionOpenCloseRead()
+    {
+        var permissions = InvokePermissionWhitelist("GetPercepteurRolePermissionNames");
+        Assert.Contains("OPEN_CAISSIER_SESSION", permissions);
+        Assert.Contains("CLOSE_CAISSIER_SESSION", permissions);
+        Assert.Contains("READ_CAISSIER_SESSION", permissions);
+    }
+
+    [Fact]
+    public void CaissierRole_IncludesCaisseSessionOpenCloseRead()
+    {
+        var permissions = InvokePermissionWhitelist("GetCaissierRolePermissionNames");
+        Assert.Contains("OPEN_CAISSIER_SESSION", permissions);
+        Assert.Contains("CLOSE_CAISSIER_SESSION", permissions);
+        Assert.Contains("READ_CAISSIER_SESSION", permissions);
+    }
+
+    [Fact]
+    public void CaissierRole_IncludesConfirmDemandeBonEnvoi()
+    {
+        var permissions = InvokePermissionWhitelist("GetCaissierRolePermissionNames");
+        Assert.Contains("READ_DEMANDE_BON_ENVOI", permissions);
+        Assert.Contains("READ_BON_ENVOI", permissions);
+        Assert.Contains("CONFIRM_DEMANDE_BON_ENVOI", permissions);
     }
 
     [Fact]

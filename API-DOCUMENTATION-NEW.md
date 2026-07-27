@@ -2760,6 +2760,8 @@ Erreurs de validation : réponse **400** avec message explicite (`ArgumentExcept
 
 La réponse inclut `prestationCree` et `prestationId` après `POST` et `PUT`.
 
+**Écriture standalone fermée** : `POST` / `PUT` / `DELETE` `/api/Prestation` → **403**. Gérer le catalogue via Produit Mutuel / Assureur uniquement. Les permissions `CREATE_PRESTATION` / `UPDATE_PRESTATION` sont retirées des rôles (`sql/MigrateRemovePrestationCreateUpdatePermissions.idempotent.sql`). `READ_PRESTATION` et les GET restent disponibles.
+
 **Suppression** : refusée (**400**) si une souscription existe sur une prestation liée ; sinon les prestations liées sont supprimées puis le produit.
 
 **Références** : `deviseId` et `assureurId` (assureur) doivent exister et être actifs.
@@ -2936,6 +2938,12 @@ Réponse type :
 - ✅ **Caissier** : retrait `UPDATE`/`DELETE` SouscriptionPrestation (lecture seule) ; script `sql/MigrateRemoveCaissierSouscriptionPrestationWrite.idempotent.sql` ; reconnexion JWT
 - ✅ **Caissier** : `UPDATE_ADHESION` / `UPDATE_AFFILIE` (héritage Percepteur) ; script `sql/MigrateCaissierUpdateAdhesionAffilie.idempotent.sql` pour lier en prod ; reconnexion JWT
 - ✅ **Caissier** : `CREATE_DEMANDE_RETRAIT_AGENT` / `READ_DEMANDE_RETRAIT_AGENT` / `VALIDATE_DEMANDE_RETRAIT_AGENT` (create/voir/valider demande ; `CONFIRM_RETRAIT_AGENT` reste le paiement jeton) ; script `sql/MigrateCaissierDemandeRetraitAgentPermissions.idempotent.sql` ; Agent (AT) reçoit CREATE+READ, Superviseur VALIDATE ; reconnexion JWT
+- ✅ **Percepteur** : `READ_DEMANDE_RETRAIT_AGENT` + `VALIDATE_DEMANDE_RETRAIT_AGENT` + `CONFIRM_RETRAIT_AGENT` (pas de CREATE) ; scripts `sql/MigratePercepteurReadDemandeRetraitAgent.idempotent.sql`, `sql/MigratePercepteurValidateDemandeRetraitAgent.idempotent.sql` ; reconnexion JWT
+- ✅ **HopitalPartenaire** : catalogue `CREATE_HOPITAL_PARTENAIRE` / `READ_HOPITAL_PARTENAIRE` / `UPDATE_HOPITAL_PARTENAIRE` pour Admin + IT ; script `sql/MigrateHopitalPartenaireCrudPermissions.idempotent.sql` ; pas de DELETE ; controller non gaté dans cette phase ; reconnexion JWT
+- ✅ **DemandeBonEnvoi** : `CONFIRM_DEMANDE_BON_ENVOI` (+ READ) pour Admin / Percepteur / Caissier ; garde sur `POST .../valider-et-generer` et `POST .../{id}/confirmer` ; script `sql/MigrateConfirmDemandeBonEnvoiAdminPercepteurCaissier.idempotent.sql` ; reconnexion JWT
+- ✅ **Caisse session** : `OPEN` / `CLOSE` / `READ_CAISSIER_SESSION` pour Percepteur + Caissier ; script `sql/MigrateCaisseSessionPercepteurCaissier.idempotent.sql` ; reconnexion JWT
+- ✅ **Jeton retrait** : job `JetonRetraitExpirationBackgroundService` (toutes les ~15 min) expire les jetons périmés (`REJETEE` + libération solde) ; options `ExpirationAutomatiqueActivee` / `IntervalleExpirationMinutes`
+- ✅ **Prestation** : retrait `CREATE_PRESTATION` / `UPDATE_PRESTATION` (IT) ; `POST`/`PUT`/`DELETE` `/api/Prestation` → 403 (sync via Produit) ; script `sql/MigrateRemovePrestationCreateUpdatePermissions.idempotent.sql` ; reconnexion JWT
 - ✅ **Souscription** : blocage d’un nouveau paiement si la période (`mois`/`annee`) est déjà soldée (somme collectes `VALIDE` ≥ tarif) — code `DEJA_PAYEE_PERIODE` ; mapping `mois`/`annee` corrigé sur `POST /api/Collecte`
 - ✅ **Agent** : filtre hiérarchique `Role.Niveau` sur `GET /api/Agent` (listes + détail) — un rôle bas ne voit pas les niveaux plus hauts
 - ✅ **Wallet virtuel** : `idAgentFrom` / `nomAgentFrom` sur les mouvements (origine de la recharge)

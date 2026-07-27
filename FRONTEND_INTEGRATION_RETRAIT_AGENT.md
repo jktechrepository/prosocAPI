@@ -20,16 +20,18 @@ Documents complémentaires :
 | Base URL API | ex. `https://dev-prosoc.asdc-rdc.org` (**sans** suffixe `/api`) |
 | Permissions paramètres | `READ_PARAMETRES_METIER`, `UPDATE_PARAMETRES_METIER` |
 | Permissions demande | `CREATE_DEMANDE_RETRAIT_AGENT`, `READ_DEMANDE_RETRAIT_AGENT`, `VALIDATE_DEMANDE_RETRAIT_AGENT` |
-| Permissions caisse | `OPEN_CAISSIER_SESSION`, `READ_CAISSIER_SESSION`, `CONFIRM_RETRAIT_AGENT` |
+| Permissions caisse | `OPEN_CAISSIER_SESSION`, `CLOSE_CAISSIER_SESSION`, `READ_CAISSIER_SESSION`, `CONFIRM_RETRAIT_AGENT` |
 
 ### Reconnexion après déploiement
 
-Après migration des permissions en UAT/production, demander aux utilisateurs **Admin**, **IT**, **Caissier**, **Agent (AT)** et **Superviseur** de **se reconnecter** pour rafraîchir le JWT (claims `permission`).
+Après migration des permissions en UAT/production, demander aux utilisateurs **Admin**, **IT**, **Caissier**, **Agent (AT)**, **Superviseur** et **Percepteur** de **se reconnecter** pour rafraîchir le JWT (claims `permission`).
 
-Script ciblé :
+Scripts ciblés :
 
 ```bash
 mysql -h <host> -u <user> -p <database> < sql/MigrateCaissierDemandeRetraitAgentPermissions.idempotent.sql
+mysql -h <host> -u <user> -p <database> < sql/MigratePercepteurReadDemandeRetraitAgent.idempotent.sql
+mysql -h <host> -u <user> -p <database> < sql/MigratePercepteurValidateDemandeRetraitAgent.idempotent.sql
 ```
 
 ### Script SQL UAT (table + permissions + seed)
@@ -80,10 +82,11 @@ Les permissions sont des claims multiples `permission` dans le JWT. **Admin** et
 | `READ_PARAMETRES_METIER` | Admin, IT | Afficher menu Paramètres > Retrait agent |
 | `UPDATE_PARAMETRES_METIER` | Admin, IT | Bouton Enregistrer actif sur le formulaire |
 | `CREATE_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur (+ Admin bypass) | Créer une demande / helpers période-solde |
-| `READ_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur (+ Admin bypass) | Lister / consulter les demandes |
-| `VALIDATE_DEMANDE_RETRAIT_AGENT` | Superviseur, Caissier (+ Admin bypass) | Valider et générer le jeton |
+| `READ_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur, **Percepteur** (+ Admin bypass) | Lister / consulter les demandes |
+| `VALIDATE_DEMANDE_RETRAIT_AGENT` | Superviseur, Caissier, **Percepteur** (+ Admin bypass) | Valider et générer le jeton |
 | `CONFIRM_RETRAIT_AGENT` | Caissier, Percepteur (+ Admin bypass) | Écran paiement jeton au guichet |
 | `OPEN_CAISSIER_SESSION` | Caissier, Percepteur | Ouvrir session avant paiement |
+| `CLOSE_CAISSIER_SESSION` | Caissier, Percepteur | Clôturer la session de caisse |
 | `READ_CAISSIER_SESSION` | Caissier, Percepteur | Consulter session courante / solde |
 
 Les endpoints `retraitagent/*` exigent un JWT valide **et** la permission dédiée (create / read / validate). Admin et SuperAdmin bypassent `HasPermission`.
@@ -352,6 +355,8 @@ Si aucune session ouverte → `codeErreur: SESSION_CAISSIER_REQUISE` (400).
 | `JETON_DEJA_UTILISE` | **409** | Ce jeton a déjà été utilisé |
 | `SOLDE_CAISSE_INSUFFISANT` | 400 | Solde caisse insuffisant |
 | `HORS_PERIODE` | 400 | Période de retrait fermée |
+
+Les jetons périmés sont aussi traités **sans clic** par le job `JetonRetraitExpirationBackgroundService` (~15 min) : la demande passe en `REJETEE` et quitte `GET /validees` / « À payer ». Config : `ExpirationAutomatiqueActivee`, `IntervalleExpirationMinutes` (paramètres RetraitAgent).
 
 ### Réponse succès
 

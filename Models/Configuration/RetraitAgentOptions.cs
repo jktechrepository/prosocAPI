@@ -15,5 +15,11 @@ namespace ProsocAPI.Models.Configuration
 
         /// <summary>Montant minimum pour un retrait PARTIEL (devise principale).</summary>
         public decimal MontantMinimumPartiel { get; set; } = 5m;
+
+        /// <summary>Active le job d'expiration automatique des jetons de retrait.</summary>
+        public bool ExpirationAutomatiqueActivee { get; set; } = true;
+
+        /// <summary>Intervalle entre deux passages du job d'expiration (minutes, min 1).</summary>
+        public int IntervalleExpirationMinutes { get; set; } = 15;
     }
 }

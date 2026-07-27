@@ -26,6 +26,9 @@ Regles cibles :
 - `POST /api/DemandeBonEnvoi/{id}/confirmer`
 - `POST /api/DemandeBonEnvoi/valider-et-generer` (legacy qui passe par le meme workflow)
 
+Permission JWT requise : **`CONFIRM_DEMANDE_BON_ENVOI`** (rôles Admin, Percepteur, Caissier ; Admin/SuperAdmin bypass API).  
+Prod : `sql/MigrateConfirmDemandeBonEnvoiAdminPercepteurCaissier.idempotent.sql` puis reconnexion JWT.
+
 ### Creation standalone (desactivee)
 - `POST /api/BonEnvoi` -> retourne `400` avec message de transition
 - `POST /api/JetonMedical` -> retourne `400` avec message de transition

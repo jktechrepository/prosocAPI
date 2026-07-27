@@ -205,6 +205,7 @@ builder.Services.AddScoped<IArrieresAffilieService, ArrieresAffilieService>();
 builder.Services.AddScoped<IAffilieConformiteService, AffilieConformiteService>();
 builder.Services.AddScoped<IPenaliteAffilieService, PenaliteAffilieService>();
 builder.Services.AddHostedService<ArrieresGenerationBackgroundService>();
+builder.Services.AddHostedService<JetonRetraitExpirationBackgroundService>();
 
 // Service de pagination universelle
 builder.Services.AddScoped<IPaginationService, PaginationService>();

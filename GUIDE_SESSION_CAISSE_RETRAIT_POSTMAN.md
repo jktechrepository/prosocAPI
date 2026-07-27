@@ -23,6 +23,7 @@ Documents connexes :
 | Élément | Détail |
 |---------|--------|
 | JWT | Compte `Caissier`, `Percepteur`, `Financier` ou `Admin` |
+| Claims UI (Caissier / Percepteur) | `OPEN_CAISSIER_SESSION`, `CLOSE_CAISSIER_SESSION`, `READ_CAISSIER_SESSION` — script `sql/MigrateCaisseSessionPercepteurCaissier.idempotent.sql` |
 | Demande | Statut `VALIDEE` + jeton valide non expiré |
 | Header | `Authorization: Bearer <token>` |
 | Base URL | ex. `https://dev-prosoc.asdc-rdc.org` (sans `/api` dans la variable) |

@@ -191,6 +191,48 @@ namespace ProsocAPI.Services
         }
 
         /// <summary>
+        /// Expire tous les jetons de retrait périmés non utilisés (job automatique + même effet qu'un paiement sur jeton expiré).
+        /// </summary>
+        public async Task<int> ExpireJetonsExpiresAsync(CancellationToken ct = default)
+        {
+            var now = DateTime.Now;
+            var jetons = await _db.JetonsRetraits
+                .Include(j => j.DemandeRetrait)
+                .Where(j => j.EstValide && !j.EstUtilise && j.DateExpiration < now)
+                .ToListAsync(ct);
+
+            var traités = 0;
+            foreach (var jeton in jetons)
+            {
+                if (jeton.DemandeRetrait?.StatutDemande != "VALIDEE")
+                    continue;
+
+                try
+                {
+                    await TraiterJetonExpireAsync(jeton, ct);
+                    traités++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Échec expiration automatique du jeton {CodeJeton} (demande {DemandeId})",
+                        jeton.CodeJeton,
+                        jeton.DemandeRetraitId);
+                }
+            }
+
+            if (traités > 0)
+            {
+                _logger.LogInformation(
+                    "Expiration automatique : {Count} jeton(s) de retrait traités",
+                    traités);
+            }
+
+            return traités;
+        }
+
+        /// <summary>
         /// Vérifie si la période de retrait est autorisée
         /// </summary>
         public async Task<PeriodeRetraitVerificationDto> VerifierPeriodeRetraitAsync(

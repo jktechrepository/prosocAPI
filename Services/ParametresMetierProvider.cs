@@ -70,12 +70,15 @@ namespace ProsocAPI.Services
             if (validationError != null)
                 throw new ArgumentException(validationError);
 
+            var current = await GetRetraitAgentAsync(ct);
             var options = new RetraitAgentOptions
             {
                 Fenetre1Debut = dto.Fenetre1Debut,
                 Fenetre1Fin = dto.Fenetre1Fin,
                 Fenetre2DerniersJours = dto.Fenetre2DerniersJours,
-                MontantMinimumPartiel = dto.MontantMinimumPartiel
+                MontantMinimumPartiel = dto.MontantMinimumPartiel,
+                ExpirationAutomatiqueActivee = current.ExpirationAutomatiqueActivee,
+                IntervalleExpirationMinutes = current.IntervalleExpirationMinutes
             };
 
             var entity = await UpsertAsync(ParametreMetierCodes.RetraitAgent, options, utilisateurId, ct);
@@ -327,6 +330,8 @@ namespace ProsocAPI.Services
                 Fenetre1Fin = options.Fenetre1Fin,
                 Fenetre2DerniersJours = options.Fenetre2DerniersJours,
                 MontantMinimumPartiel = options.MontantMinimumPartiel,
+                ExpirationAutomatiqueActivee = options.ExpirationAutomatiqueActivee,
+                IntervalleExpirationMinutes = options.IntervalleExpirationMinutes,
                 DateModification = entity?.DateModification,
                 ModifieParUtilisateurId = entity?.ModifieParUtilisateurId,
                 ModifieParNom = entity?.ModifiePar?.NomUtilisateur

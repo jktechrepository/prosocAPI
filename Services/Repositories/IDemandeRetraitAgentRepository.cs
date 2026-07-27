@@ -23,6 +23,8 @@ namespace ProsocAPI.Services.Repositories
             JetonRetraitUtilisationDto utilisationDto,
             int operateurUtilisateurId,
             CancellationToken ct = default);
+        /// <summary>Expire les jetons périmés non utilisés (libération solde + rejet demande).</summary>
+        Task<int> ExpireJetonsExpiresAsync(CancellationToken ct = default);
         Task<DemandeRetraitAgentStatsDto> GetStatsAsync(DateTime date, CancellationToken ct = default);
     }
 }

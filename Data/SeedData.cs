@@ -367,7 +367,9 @@ namespace Prosoc.Data
                         new Permission { Nom = "SCAN_BON_ENVOI", Description = "Scanner et vérifier un QR de bon d'envoi", DateCreation = DateTime.Now },
                         new Permission { Nom = "READ_JETON_MEDICAL", Description = "Consulter ses jetons médicaux", DateCreation = DateTime.Now },
                         new Permission { Nom = "USE_JETON_MEDICAL", Description = "Valider et utiliser un jeton médical", DateCreation = DateTime.Now },
+                        new Permission { Nom = "CREATE_HOPITAL_PARTENAIRE", Description = "Créer un hôpital partenaire", DateCreation = DateTime.Now },
                         new Permission { Nom = "READ_HOPITAL_PARTENAIRE", Description = "Consulter les hôpitaux partenaires", DateCreation = DateTime.Now },
+                        new Permission { Nom = "UPDATE_HOPITAL_PARTENAIRE", Description = "Modifier un hôpital partenaire", DateCreation = DateTime.Now },
                         new Permission { Nom = "ACCESS_DASHBOARD_HOPITAL", Description = "Accéder au dashboard hôpital", DateCreation = DateTime.Now },
                         new Permission { Nom = "ACCESS_DASHBOARD_CAISSIER", Description = "Accéder au dashboard caissier", DateCreation = DateTime.Now },
                         new Permission { Nom = "OPEN_CAISSIER_SESSION", Description = "Ouvrir une session de caisse", DateCreation = DateTime.Now },
@@ -2248,15 +2250,17 @@ namespace Prosoc.Data
             "CREATE_PRODUIT_MUTUEL",
             "READ_PRODUIT_MUTUEL",
             "UPDATE_PRODUIT_MUTUEL",
-            "CREATE_PRESTATION",
             "READ_PRESTATION",
-            "UPDATE_PRESTATION",
             "CREATE_FRAIS",
             "READ_FRAIS",
             "UPDATE_FRAIS",
             "CREATE_ASSUREUR",
             "READ_ASSUREUR",
             "UPDATE_ASSUREUR",
+            // Hôpitaux partenaires (référentiel)
+            "CREATE_HOPITAL_PARTENAIRE",
+            "READ_HOPITAL_PARTENAIRE",
+            "UPDATE_HOPITAL_PARTENAIRE",
             // Notifications & files techniques
             "CREATE_NOTIFICATION",
             "READ_NOTIFICATION",
@@ -2563,7 +2567,10 @@ namespace Prosoc.Data
             "CONFIRM_PERCEPTION_VIRTUAL",
             // Paiement retrait commission agent (jeton) + session caisse terrain
             "OPEN_CAISSIER_SESSION",
+            "CLOSE_CAISSIER_SESSION",
             "READ_CAISSIER_SESSION",
+            "READ_DEMANDE_RETRAIT_AGENT",
+            "VALIDATE_DEMANDE_RETRAIT_AGENT",
             "CONFIRM_RETRAIT_AGENT"
         };
 

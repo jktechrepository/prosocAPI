@@ -16,7 +16,7 @@ Documents connexes :
 |-------|--------|--------|
 | 1 | Agent (ou Caissier) | Consulte la période autorisée et le solde |
 | 2 | Agent (ou Caissier) | Crée une **demande de retrait** (PARTIEL ou TOTAL selon la fenêtre) — permission `CREATE_DEMANDE_RETRAIT_AGENT` |
-| 3 | Admin / Superviseur / Caissier | **Valide** la demande et génère un **jeton** — permission `VALIDATE_DEMANDE_RETRAIT_AGENT` |
+| 3 | Admin / Superviseur / Caissier / **Percepteur** | **Valide** la demande et génère un **jeton** — permission `VALIDATE_DEMANDE_RETRAIT_AGENT` |
 | 4 | Caissier / Percepteur | **Utilise le jeton** → débit wallet agent + sortie caisse — permission `CONFIRM_RETRAIT_AGENT` |
 | 5 | Admin / IT | Ajuste les **paramètres métier** (fenêtres, montant minimum) via l'API dédiée |
 
@@ -136,11 +136,13 @@ sequenceDiagram
 | Permission | Rôles |
 |------------|--------|
 | `CREATE_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur |
-| `READ_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur |
-| `VALIDATE_DEMANDE_RETRAIT_AGENT` | Superviseur, Caissier (+ Admin bypass) |
+| `READ_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur, **Percepteur** |
+| `VALIDATE_DEMANDE_RETRAIT_AGENT` | Superviseur, Caissier, **Percepteur** (+ Admin bypass) |
 | `CONFIRM_RETRAIT_AGENT` | Caissier, Percepteur (paiement jeton ; distinct de la validation) |
 
-Prod : `sql/MigrateCaissierDemandeRetraitAgentPermissions.idempotent.sql` puis **reconnexion JWT**.
+Prod demande Caissier/AT/Superviseur : `sql/MigrateCaissierDemandeRetraitAgentPermissions.idempotent.sql`.  
+Prod lecture Percepteur : `sql/MigratePercepteurReadDemandeRetraitAgent.idempotent.sql`.  
+Prod validation Percepteur : `sql/MigratePercepteurValidateDemandeRetraitAgent.idempotent.sql` puis **reconnexion JWT**.
 
 ### 1. Création de demande
 
@@ -157,8 +159,19 @@ Prod : `sql/MigrateCaissierDemandeRetraitAgentPermissions.idempotent.sql` puis *
 **POST** `/api/retraitagent/valider-et-generer-jeton`
 
 - Passe la demande à `VALIDEE`.
-- Crée un `JetonRetrait` (code unique, date expiration).
+- Crée un `JetonRetrait` (code unique, date expiration **+7 jours**).
 - Permission typique : workflow superviseur / admin caisse.
+
+#### Expiration automatique du jeton
+
+Un job `JetonRetraitExpirationBackgroundService` tourne environ toutes les **15 minutes** (configurable : `RetraitAgent.ExpirationAutomatiqueActivee`, `IntervalleExpirationMinutes`).
+
+Pour chaque jeton périmé non utilisé avec demande encore `VALIDEE` :
+- libère le solde réservé ;
+- passe la demande en `REJETEE` (motif « Jeton de retrait expiré ») ;
+- invalide le jeton (`EstValide = false`).
+
+Même logique qu’un `POST utiliser-jeton` sur jeton expiré (`JETON_EXPIRE`). L’onglet « À payer » se nettoie sans action utilisateur (délai max ≈ intervalle du job).
 
 ### 3. Paiement caisse
 
@@ -212,6 +225,8 @@ Fin de journée : `POST /api/Caisse/session/{id}/cloturer` puis réouverture le 
 |---------|------|
 | `sql/MigrateParametresMetierPermissions.idempotent.sql` | Permissions READ/UPDATE pour Admin et IT |
 | `sql/MigratePercepteurRetraitAgentPermissions.idempotent.sql` | Permissions retrait jeton + session caisse pour Percepteur |
+| `sql/MigratePercepteurReadDemandeRetraitAgent.idempotent.sql` | `READ_DEMANDE_RETRAIT_AGENT` pour Percepteur (consultation file / historique) |
+| `sql/MigratePercepteurValidateDemandeRetraitAgent.idempotent.sql` | `VALIDATE_DEMANDE_RETRAIT_AGENT` pour Percepteur (valider + générer jeton) |
 | `sql/SeedParametresMetierRetraitAgent.idempotent.sql` | Seed RETRAIT_AGENT + modules connexes |
 
 ---
