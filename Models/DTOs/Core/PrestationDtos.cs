@@ -17,6 +17,7 @@ namespace ProsocAPI.Models.DTOs.Core
         public string? ProduitMutuelNom { get; set; }
         public int? ProduitAssureurId { get; set; }
         public string? ProduitAssureurNom { get; set; }
+        public bool EstGratuit { get; set; }
     }
 
     public class PrestationCreateDto

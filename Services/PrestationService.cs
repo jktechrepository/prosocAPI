@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Prosoc.Data;
 using ProsocAPI.Models.Core;
 using ProsocAPI.Services.Repositories;
+using Prosoc.Utilities;
 
 namespace ProsocAPI.Services
 {
@@ -58,6 +59,14 @@ namespace ProsocAPI.Services
                 .OrderBy(x => x.NomPrestation)
                 .ToListAsync(ct);
         }
+
+        public IQueryable<Prestation> GetGratuitesQueryable() =>
+            PrestationHelpers.FilterGratuitesActives(
+                _db.Prestations
+                    .Include(p => p.ProduitMutuel)
+                    .Include(p => p.ProduitAssureur)
+                    .Include(p => p.Devise)
+                    .AsQueryable());
 
         public async Task<Prestation> CreateAsync(Prestation entity, CancellationToken ct = default)
         {

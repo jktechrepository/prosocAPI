@@ -43,6 +43,7 @@ public class ParametresMetierProviderTests
             Options.Create(new AgentMaashOptions()),
             Options.Create(new ArrieresOptions()),
             Options.Create(new PenaliteOptions()),
+            Options.Create(new WalletVirtuelOptions { PlafondSolde = 100m }),
             NullLogger<ParametresMetierProvider>.Instance);
     }
 

@@ -14,17 +14,23 @@ namespace ProsocAPI.Services
         private readonly ProsocDbContext _db;
         private readonly IPaginationService _paginationService;
         private readonly IDeviseConversionService _deviseConversion;
+        private readonly ICaisseService _caisseService;
+        private readonly IWalletVirtuelMouvementService _walletMouvementService;
         private readonly ILogger<PerceptionVirtuelleService> _logger;
 
         public PerceptionVirtuelleService(
             ProsocDbContext db,
             IPaginationService paginationService,
             IDeviseConversionService deviseConversion,
+            ICaisseService caisseService,
+            IWalletVirtuelMouvementService walletMouvementService,
             ILogger<PerceptionVirtuelleService> logger)
         {
             _db = db;
             _paginationService = paginationService;
             _deviseConversion = deviseConversion;
+            _caisseService = caisseService;
+            _walletMouvementService = walletMouvementService;
             _logger = logger;
         }
 
@@ -122,11 +128,12 @@ namespace ProsocAPI.Services
                 .AsNoTracking()
                 .Include(p => p.Agent)
                 .Include(p => p.PercepteurUtilisateur)
+                .Include(p => p.AnnuleParUtilisateur)
                 .Include(p => p.Devise)
                 .Include(p => p.Lignes)
                     .ThenInclude(l => l.Collecte)
                         .ThenInclude(c => c.Affilie)
-                .FirstOrDefaultAsync(p => p.IdPerceptionVirtuelle == id && p.Statut, ct);
+                .FirstOrDefaultAsync(p => p.IdPerceptionVirtuelle == id, ct);
 
             return perception == null ? null : MapPerception(perception);
         }
@@ -241,6 +248,7 @@ namespace ProsocAPI.Services
                 .AsNoTracking()
                 .Include(p => p.Agent)
                 .Include(p => p.PercepteurUtilisateur)
+                .Include(p => p.AnnuleParUtilisateur)
                 .Include(p => p.Devise)
                 .Include(p => p.Lignes)
                     .ThenInclude(l => l.Collecte)
@@ -316,14 +324,39 @@ namespace ProsocAPI.Services
             var devisePrincipale = await _deviseConversion.GetDevisePrincipaleAsync(ct);
             var montantTotal = collectes.Sum(c => c.MontantDevisePrincipale ?? c.Montant);
 
-            var mouvementsVirtuels = await _db.WalletVirtuelMouvements
+            var debitsVa = await _db.WalletVirtuelMouvements
                 .AsNoTracking()
                 .Where(m => m.TypeOperation == "DEBIT"
                     && m.Source == WalletVirtuelMouvementSources.CollecteCompteVirtuel
                     && m.ReferenceExterne != null
                     && dto.CollecteIds.Contains(m.ReferenceExterne.Value)
                     && m.Statut)
-                .ToDictionaryAsync(m => m.ReferenceExterne!.Value, m => m.IdWalletVirtuelMouvement, ct);
+                .ToListAsync(ct);
+
+            var mouvementsVirtuels = debitsVa
+                .GroupBy(m => m.ReferenceExterne!.Value)
+                .ToDictionary(g => g.Key, g => g.First().IdWalletVirtuelMouvement);
+
+            SessionCaisse session;
+            try
+            {
+                session = await _caisseService.ResolveSessionPourOperationAsync(
+                    percepteurUtilisateurId, null, skipSessionCheck: false, ct)
+                    ?? throw new InvalidOperationException("SESSION_CAISSIER_REQUISE");
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "SESSION_CAISSIER_REQUISE")
+            {
+                return Fail("SESSION_CAISSIER_REQUISE",
+                    "Une session de caisse ouverte est requise pour confirmer la perception.");
+            }
+
+            var walletIds = debitsVa.Select(d => d.WalletVirtuelId).Distinct().ToList();
+            var wallets = await _db.WalletsVirtuelsAgents
+                .Where(w => walletIds.Contains(w.IdWalletVirtuelAgent) && w.Statut)
+                .ToDictionaryAsync(w => w.IdWalletVirtuelAgent, ct);
+
+            if (wallets.Count != walletIds.Count)
+                return Fail("WALLET_VIRTUEL_INTROUVABLE", "Wallet virtuel introuvable pour une des collectes.");
 
             await using var transaction = await _db.Database.BeginTransactionAsync(ct);
 
@@ -336,6 +369,7 @@ namespace ProsocAPI.Services
                 NombreCollectes = collectes.Count,
                 DatePerception = DateTime.Now,
                 Observation = dto.Observation,
+                StatutMetier = PerceptionVirtuelleStatuts.Confirmee,
                 DateCreation = DateTime.Now,
                 Statut = true
             };
@@ -368,13 +402,51 @@ namespace ProsocAPI.Services
                 collecte.DateModification = DateTime.Now;
             }
 
+            _db.MouvementsCaisses.Add(new MouvementCaisse
+            {
+                SessionCaisseId = session.IdSessionCaisse,
+                UtilisateurId = percepteurUtilisateurId,
+                TypeOperation = MouvementCaisseTypes.Entree,
+                Source = MouvementCaisseSources.PerceptionVirtuelle,
+                Montant = montantTotal,
+                DeviseId = session.DeviseId,
+                DateOperation = DateTime.Now,
+                PerceptionVirtuelleId = perception.IdPerceptionVirtuelle,
+                Description = $"Perception virtuelle #{perception.IdPerceptionVirtuelle} — agent {dto.AgentId}",
+                DateCreation = DateTime.Now,
+                Statut = true
+            });
+
+            foreach (var debit in debitsVa.GroupBy(d => d.ReferenceExterne!.Value).Select(g => g.First()))
+            {
+                if (!wallets.TryGetValue(debit.WalletVirtuelId, out var wallet))
+                    return Fail("WALLET_VIRTUEL_INTROUVABLE", $"Wallet virtuel introuvable (id {debit.WalletVirtuelId}).");
+
+                var ancienSolde = wallet.SoldeVirtuel;
+                wallet.SoldeVirtuel += debit.Montant;
+                wallet.DateModification = DateTime.Now;
+
+                await _walletMouvementService.EnregistrerMouvementAsync(
+                    wallet.IdWalletVirtuelAgent,
+                    debit.Montant,
+                    "CREDIT",
+                    WalletVirtuelMouvementSources.RemisePerceptionVirtuelle,
+                    ancienSolde,
+                    wallet.SoldeVirtuel,
+                    percepteurUtilisateurId,
+                    wallet.DeviseId,
+                    $"Remise perception #{perception.IdPerceptionVirtuelle} — collecte {debit.ReferenceExterne}",
+                    debit.ReferenceExterne,
+                    ct);
+            }
+
             await _db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
             var soldeRestant = await CalculerSoldeRestantAgentAsync(dto.AgentId, agentParAffilie, collecteIdsAvecDebit, ct);
 
             _logger.LogInformation(
-                "Perception virtuelle {PerceptionId} — {Nombre} collecte(s), montant {Montant} par utilisateur {UtilisateurId}",
+                "Perception virtuelle {PerceptionId} — {Nombre} collecte(s), montant {Montant} par utilisateur {UtilisateurId} (caisse+wallet)",
                 perception.IdPerceptionVirtuelle, collectes.Count, montantTotal, percepteurUtilisateurId);
 
             return new PerceptionVirtuelleConfirmerResultDto
@@ -385,6 +457,122 @@ namespace ProsocAPI.Services
                 MontantTotal = montantTotal,
                 NombreCollectes = collectes.Count,
                 SoldeRestantAgent = soldeRestant
+            };
+        }
+
+        public async Task<PerceptionVirtuelleConfirmerResultDto> AnnulerPerceptionAsync(
+            int annuleParUtilisateurId,
+            int perceptionId,
+            PerceptionVirtuelleAnnulerDto dto,
+            CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Motif))
+                return Fail("MOTIF_REQUIS", "Le motif d'annulation est obligatoire.");
+
+            var perception = await _db.PerceptionsVirtuelles
+                .Include(p => p.Lignes)
+                .FirstOrDefaultAsync(p => p.IdPerceptionVirtuelle == perceptionId, ct);
+
+            if (perception == null)
+                return Fail("PERCEPTION_INTROUVABLE", "Perception introuvable.");
+
+            if (PerceptionVirtuelleStatuts.EstAnnulee(perception.StatutMetier))
+                return Fail("DEJA_ANNULEE", "Cette perception est déjà annulée.", conflict: true);
+
+            var collecteIds = perception.Lignes.Select(l => l.CollecteId).Distinct().ToList();
+            var collectes = await _db.Collectes
+                .Where(c => collecteIds.Contains(c.IdCollecte))
+                .ToListAsync(ct);
+
+            var mouvementsCaisse = await _db.MouvementsCaisses
+                .Where(m => m.PerceptionVirtuelleId == perceptionId && m.Statut)
+                .ToListAsync(ct);
+
+            var creditsRemise = await _db.WalletVirtuelMouvements
+                .Where(m => m.TypeOperation == "CREDIT"
+                    && m.Source == WalletVirtuelMouvementSources.RemisePerceptionVirtuelle
+                    && m.ReferenceExterne != null
+                    && collecteIds.Contains(m.ReferenceExterne.Value)
+                    && m.Statut)
+                .ToListAsync(ct);
+
+            var walletIds = creditsRemise.Select(c => c.WalletVirtuelId).Distinct().ToList();
+            var wallets = await _db.WalletsVirtuelsAgents
+                .Where(w => walletIds.Contains(w.IdWalletVirtuelAgent))
+                .ToDictionaryAsync(w => w.IdWalletVirtuelAgent, ct);
+
+            await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+
+            perception.StatutMetier = PerceptionVirtuelleStatuts.Annulee;
+            perception.MotifAnnulation = dto.Motif.Trim();
+            perception.DateAnnulation = DateTime.Now;
+            perception.AnnuleParUtilisateurId = annuleParUtilisateurId;
+            perception.DateModification = DateTime.Now;
+
+            foreach (var ligne in perception.Lignes)
+                ligne.Statut = false;
+
+            foreach (var collecte in collectes)
+            {
+                if (collecte.PerceptionVirtuelleId == perceptionId)
+                {
+                    collecte.StatutPerception = CollecteStatutPerception.NonPerçu;
+                    collecte.DatePerception = null;
+                    collecte.PercepteurUtilisateurId = null;
+                    collecte.PerceptionVirtuelleId = null;
+                    collecte.DateModification = DateTime.Now;
+                }
+            }
+
+            foreach (var mouvement in mouvementsCaisse)
+            {
+                mouvement.Statut = false;
+                mouvement.Description = string.IsNullOrWhiteSpace(mouvement.Description)
+                    ? $"Annulé — perception #{perceptionId}"
+                    : $"{mouvement.Description} | Annulé — perception #{perceptionId}";
+            }
+
+            foreach (var credit in creditsRemise.GroupBy(c => c.ReferenceExterne!.Value).Select(g => g.First()))
+            {
+                if (!wallets.TryGetValue(credit.WalletVirtuelId, out var wallet))
+                    return Fail("WALLET_VIRTUEL_INTROUVABLE", $"Wallet virtuel introuvable (id {credit.WalletVirtuelId}).");
+
+                if (wallet.SoldeVirtuel < credit.Montant)
+                    return Fail("SOLDE_VIRTUEL_INSUFFISANT",
+                        $"Solde virtuel insuffisant pour annuler la remise de la collecte {credit.ReferenceExterne}.");
+
+                var ancienSolde = wallet.SoldeVirtuel;
+                wallet.SoldeVirtuel -= credit.Montant;
+                wallet.DateModification = DateTime.Now;
+
+                await _walletMouvementService.EnregistrerMouvementAsync(
+                    wallet.IdWalletVirtuelAgent,
+                    credit.Montant,
+                    "DEBIT",
+                    WalletVirtuelMouvementSources.AnnulRemisePerceptionVirtuelle,
+                    ancienSolde,
+                    wallet.SoldeVirtuel,
+                    annuleParUtilisateurId,
+                    wallet.DeviseId,
+                    $"Annulation remise perception #{perceptionId} — collecte {credit.ReferenceExterne}",
+                    credit.ReferenceExterne,
+                    ct);
+            }
+
+            await _db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+
+            _logger.LogInformation(
+                "Perception virtuelle {PerceptionId} annulée par utilisateur {UtilisateurId} — motif: {Motif}",
+                perceptionId, annuleParUtilisateurId, perception.MotifAnnulation);
+
+            return new PerceptionVirtuelleConfirmerResultDto
+            {
+                Succes = true,
+                Message = "Perception annulée avec succès",
+                PerceptionVirtuelleId = perception.IdPerceptionVirtuelle,
+                MontantTotal = perception.MontantTotal,
+                NombreCollectes = perception.NombreCollectes
             };
         }
 
@@ -488,8 +676,14 @@ namespace ProsocAPI.Services
                 NombreCollectes = p.NombreCollectes,
                 DatePerception = p.DatePerception,
                 Observation = p.Observation,
+                StatutMetier = string.IsNullOrWhiteSpace(p.StatutMetier)
+                    ? PerceptionVirtuelleStatuts.Confirmee
+                    : p.StatutMetier,
+                MotifAnnulation = p.MotifAnnulation,
+                DateAnnulation = p.DateAnnulation,
+                AnnuleParUtilisateurId = p.AnnuleParUtilisateurId,
+                AnnuleParNom = p.AnnuleParUtilisateur?.NomUtilisateur,
                 Lignes = p.Lignes
-                    .Where(l => l.Statut)
                     .Select(l => new PerceptionVirtuelleLigneReadDto
                     {
                         IdLigne = l.IdLigne,

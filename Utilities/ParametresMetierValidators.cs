@@ -77,4 +77,15 @@ namespace ProsocAPI.Utilities
         public static string? ValidateFraisExists(bool exists) =>
             exists ? null : "FraisPenaliteCode introuvable dans le catalogue Frais.";
     }
+
+    public static class WalletVirtuelParametresValidator
+    {
+        public static string? Validate(WalletVirtuelParametresUpdateDto dto)
+        {
+            if (dto.PlafondSolde <= 0)
+                return "PlafondSolde doit être strictement positif.";
+
+            return null;
+        }
+    }
 }

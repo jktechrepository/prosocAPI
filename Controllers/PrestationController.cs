@@ -68,6 +68,36 @@ namespace ProsocAPI.Controllers
             }
         }
 
+        [HttpGet("gratuites")]
+        [AllowAnonymous]
+        public async Task<ActionResult<PaginatedResponse<PrestationReadDto>>> GetGratuites(
+            [FromQuery] PaginationRequest request)
+        {
+            try
+            {
+                var query = _prestationRepository.GetGratuitesQueryable();
+                var result = await _paginationService.CreatePaginatedResponseAsync(query, request);
+                var dtos = result.Data.Select(PrestationHelpers.ToReadDto).ToList();
+
+                return Ok(new PaginatedResponse<PrestationReadDto>
+                {
+                    Data = dtos,
+                    CurrentPage = result.CurrentPage,
+                    PageSize = result.PageSize,
+                    TotalItems = result.TotalItems,
+                    TotalPages = result.TotalPages,
+                    HasNextPage = result.HasNextPage,
+                    HasPreviousPage = result.HasPreviousPage
+                });
+            }
+            catch (Exception ex)
+            {
+                return this.TechnicalErrorResponse(
+                    "Une erreur technique est survenue lors de la récupération des prestations gratuites",
+                    ex);
+            }
+        }
+
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<ActionResult<PrestationReadDto>> GetById(int id, CancellationToken ct = default)

@@ -202,6 +202,51 @@ namespace ProsocAPI.Controllers
             }
         }
 
+        [HttpGet("plafond-wallet-virtuel")]
+        public async Task<ActionResult<WalletVirtuelParametresReadDto>> GetPlafondWalletVirtuel(
+            CancellationToken ct = default)
+        {
+            if (!HasPermission("READ_PARAMETRES_METIER"))
+                return ForbiddenPermission("READ_PARAMETRES_METIER");
+
+            try
+            {
+                return Ok(await _parametresMetierProvider.GetWalletVirtuelReadAsync(ct));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lecture paramètres WalletVirtuel");
+                return this.TechnicalErrorResponse("Erreur serveur", ex);
+            }
+        }
+
+        [HttpPut("plafond-wallet-virtuel")]
+        public async Task<ActionResult<WalletVirtuelParametresReadDto>> UpdatePlafondWalletVirtuel(
+            [FromBody] WalletVirtuelParametresUpdateDto dto,
+            CancellationToken ct = default)
+        {
+            if (!HasPermission("UPDATE_PARAMETRES_METIER"))
+                return ForbiddenPermission("UPDATE_PARAMETRES_METIER");
+
+            try
+            {
+                var result = await _parametresMetierProvider.UpdateWalletVirtuelAsync(
+                    dto,
+                    ResolveCurrentUserId(),
+                    ct);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur mise à jour paramètres WalletVirtuel");
+                return this.TechnicalErrorResponse("Erreur serveur", ex);
+            }
+        }
+
         private int ResolveCurrentUserId()
         {
             var userId = GetCurrentUserId();

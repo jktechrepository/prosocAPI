@@ -402,7 +402,7 @@ Les **personnes à charge** restent **optionnelles**. Sans `valider: true`, le P
 **Endpoints :**
 
 - `GET /api/adhesion/{id}/fiche-encodeur` — lire la fiche (`hasPhoto`, `hasCarteIdentite`, `identiteComplete`, `adresseActiviteComplete`, `dossierComplet`, …)
-- `PUT /api/adhesion/{id}/niveau-2-encodeur` — enregistrer et éventuellement valider
+- `PUT /api/adhesion/{id}/niveau-2-encodeur` — enregistrer et éventuellement valider (**permission** : `ENCODE_ADHESION_NIVEAU_2`, rôle typique Agent AA ; script prod `sql/MigrateEncodeAdhesionNiveau2Permission.idempotent.sql` + reconnexion JWT)
 
 ```json
 {
@@ -1213,10 +1213,52 @@ Corps :
 }
 ```
 
+### Demande de recharge Wallet Virtuel (jusqu'au plafond)
+
+Workflow Superviseur : créer une demande pour un agent junior → file `en-attente` → confirmer (crédit) ou rejeter.
+
+**Montant** calculé côté serveur : `PlafondSolde - SoldeVirtuel` (recalculé à la confirmation). Refus si `<= 0` (`SOLDE_AU_PLAFOND`).
+
+**Plafond** (paramètre métier) :
+
+| Méthode | Route | Permission |
+|---------|-------|------------|
+| `GET` | `/api/parametres-metier/plafond-wallet-virtuel` | `READ_PARAMETRES_METIER` |
+| `PUT` | `/api/parametres-metier/plafond-wallet-virtuel` | `UPDATE_PARAMETRES_METIER` |
+
+Corps PUT : `{ "plafondSolde": 100 }` (strictement positif). Défaut seed : `100`.
+
+**Demandes** :
+
+| Méthode | Route | Permission |
+|---------|-------|------------|
+| `GET` | `/api/DemandeRechargeWalletVirtuel` | `READ_DEMANDE_RECHARGE_WALLET_VIRTUEL` |
+| `GET` | `/api/DemandeRechargeWalletVirtuel/en-attente` | idem |
+| `GET` | `/api/DemandeRechargeWalletVirtuel/{id}` | idem |
+| `GET` | `/api/DemandeRechargeWalletVirtuel/by-agent/{agentId}` | idem |
+| `POST` | `/api/DemandeRechargeWalletVirtuel` | `CREATE_DEMANDE_RECHARGE_WALLET_VIRTUEL` |
+| `POST` | `/api/DemandeRechargeWalletVirtuel/{id}/confirmer` | `CONFIRM_DEMANDE_RECHARGE_WALLET_VIRTUEL` |
+| `POST` | `/api/DemandeRechargeWalletVirtuel/{id}/rejeter` | idem |
+
+Rôles typiques : **Admin**, **Superviseur**. Hiérarchie `CanRechargeWalletVirtuel` appliquée à la création et à la confirmation.
+
+Création : `{ "agentId": 12, "motif": "Besoin terrain" }` — le montant n'est **pas** fourni par le client.
+
+Rejet : `{ "motif": "Dossier incomplet" }`.
+
+À la confirmation : crédit wallet + mouvement source `RECHARGE_PLAFOND` ; une seule demande `EN_ATTENTE` par agent.
+
+Scripts prod :
+```bash
+mysql ... < sql/MigrateDemandeRechargeWalletVirtuel.idempotent.sql
+mysql ... < sql/MigrateDemandeRechargeWalletVirtuelPermissions.idempotent.sql
+```
+Puis reconnexion JWT.
+
 #### GET /api/WalletVirtuelAgent/by-agent/{agentId}/mouvements
 Historique complet des mouvements (recharges, ajustements, débits collectes VA).
 
-Filtres query optionnels : `typeOperation` (`CREDIT`/`DEBIT`), `source` (`AJOUT_SOLDE`, `CREATION`, `AJUSTEMENT_SOLDE`, `COLLECTE_COMPTE_VIRTUEL`), `dateDebut`, `dateFin`.
+Filtres query optionnels : `typeOperation` (`CREDIT`/`DEBIT`), `source` (`AJOUT_SOLDE`, `CREATION`, `AJUSTEMENT_SOLDE`, `COLLECTE_COMPTE_VIRTUEL`, `RECHARGE_PLAFOND`, `REMISE_PERCEPTION_VIRTUELLE`, `ANNUL_REMISE_PERCEPTION_VIRT`), `dateDebut`, `dateFin`.
 
 #### GET /api/WalletVirtuelAgent/by-agent/{agentId}/mouvements/paginated
 Même historique, paginé (`pageNumber`, `pageSize`, `sortBy=DateOperation`).
@@ -1642,6 +1684,10 @@ Rôles : `Admin`, `Percepteur`, `Financier`.
 
 Quand un AT encaisse via `VIRTUAL_ACCOUNT`, son wallet virtuel est débité. Le percepteur récupère ensuite l'argent physique et confirme la perception via ce module (journal dédié, sans session caisse).
 
+> **« Reversement »** = confirmation terrain (`POST .../confirmer`). **Prérequis** : session caisse ouverte du confirmanteur. Effets : journal `PerceptionVirtuelle` + `ENTREE` caisse (`PERCEPTION_VIRTUELLE`) + `CREDIT` wallet AT (`REMISE_PERCEPTION_VIRTUELLE`). Annulation : `POST .../{id}/annuler` → soft-disable entrée caisse + re-débit wallet (`ANNUL_REMISE_PERCEPTION_VIRT`).
+
+**Permissions** (claims JWT, Admin bypass) : lectures → `READ_PERCEPTION_VIRTUAL` ; `confirmer` / `annuler` → `CONFIRM_PERCEPTION_VIRTUAL`. Reconnecter les utilisateurs après déploiement.
+
 | Endpoint | Description |
 |----------|-------------|
 | `GET /api/PerceptionVirtuelle/collectes-en-attente` | Collectes VA `VALIDE` + `NON_PERCU` (filtres `agentId`, dates) |
@@ -1652,6 +1698,7 @@ Quand un AT encaisse via `VIRTUAL_ACCOUNT`, son wallet virtuel est débité. Le 
 | `GET /api/PerceptionVirtuelle/export` | Export Excel (`format=excel`) |
 | `GET /api/PerceptionVirtuelle/{id}` | Détail perception + lignes |
 | `POST /api/PerceptionVirtuelle/confirmer` | Confirme la perception d'un lot de collectes |
+| `POST /api/PerceptionVirtuelle/{id}/annuler` | Annule une perception (`{ "motif": "..." }`) — Admin / Financier |
 
 ```json
 {
@@ -1663,7 +1710,10 @@ Quand un AT encaisse via `VIRTUAL_ACCOUNT`, son wallet virtuel est débité. Le 
 
 Réponse : `montantTotal`, `nombreCollectes`, `perceptionVirtuelleId`, `soldeRestantAgent`.
 
-Codes d'erreur : `COLLECTE_DEJA_PERCUE` (HTTP 409), `AGENT_INCOHERENT`, `DEBIT_VIRTUEL_MANQUANT`, etc.
+Codes d'erreur confirmation : `COLLECTE_DEJA_PERCUE` (HTTP 409), `SESSION_CAISSIER_REQUISE`, `AGENT_INCOHERENT`, `DEBIT_VIRTUEL_MANQUANT`, `WALLET_VIRTUEL_INTROUVABLE`, etc.  
+Codes d'erreur annulation : `MOTIF_REQUIS`, `PERCEPTION_INTROUVABLE` (404), `DEJA_ANNULEE` (409), `SOLDE_VIRTUEL_INSUFFISANT`.
+
+**Rapprochement cash** : guichet ESPECE/FlexPay → `MouvementCaisse` ; remises AT VA confirmées → `PerceptionVirtuelle` **et** `MouvementCaisse` source `PERCEPTION_VIRTUELLE` (+ crédit wallet `REMISE_PERCEPTION_VIRTUELLE`).
 
 **Migration production** :
 
@@ -1671,6 +1721,8 @@ Codes d'erreur : `COLLECTE_DEJA_PERCUE` (HTTP 409), `AGENT_INCOHERENT`, `DEBIT_V
 mysql -h <host> -u <user> -p <database> < sql/MigratePerceptionVirtuelle.production.idempotent.sql
 mysql -h <host> -u <user> -p <database> < sql/MigratePerceptionVirtuellePermissions.idempotent.sql
 mysql -h <host> -u <user> -p <database> < sql/MigrateFinancierPerceptionVirtuellePermissions.idempotent.sql
+mysql -h <host> -u <user> -p <database> < sql/MigratePerceptionVirtuelleAnnulation.idempotent.sql
+mysql -h <host> -u <user> -p <database> < sql/MigratePerceptionVirtuelleCaisseWallet.idempotent.sql
 ```
 
 ### Dashboard Percepteur
@@ -2761,6 +2813,8 @@ Erreurs de validation : réponse **400** avec message explicite (`ArgumentExcept
 La réponse inclut `prestationCree` et `prestationId` après `POST` et `PUT`.
 
 **Écriture standalone fermée** : `POST` / `PUT` / `DELETE` `/api/Prestation` → **403**. Gérer le catalogue via Produit Mutuel / Assureur uniquement. Les permissions `CREATE_PRESTATION` / `UPDATE_PRESTATION` sont retirées des rôles (`sql/MigrateRemovePrestationCreateUpdatePermissions.idempotent.sql`). `READ_PRESTATION` et les GET restent disponibles.
+
+**Catalogue gratuit** : `GET /api/Prestation/gratuites` — liste paginée (`[AllowAnonymous]`, même pagination que `GET /api/Prestation`). Retourne les prestations actives dont le produit lié (`ProduitMutuel` ou `ProduitAssureur`) a `estGratuit: true` et `statut: true`. Chaque `PrestationReadDto` inclut `estGratuit` (dérivé du produit, pas stocké sur `Prestation`). `montant` peut être `0` pour ces prestations.
 
 **Suppression** : refusée (**400**) si une souscription existe sur une prestation liée ; sinon les prestations liées sont supprimées puis le produit.
 

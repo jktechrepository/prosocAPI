@@ -42,6 +42,8 @@ namespace ProsocAPI.Models.Core
 
         public int? WalletMouvementId { get; set; }
 
+        public int? PerceptionVirtuelleId { get; set; }
+
         [StringLength(500)]
         public string? Description { get; set; }
 
@@ -83,5 +85,10 @@ namespace ProsocAPI.Models.Core
         [JsonIgnore]
         [ValidateNever]
         public virtual WalletMouvement? WalletMouvement { get; set; }
+
+        [ForeignKey(nameof(PerceptionVirtuelleId))]
+        [JsonIgnore]
+        [ValidateNever]
+        public virtual PerceptionVirtuelle? PerceptionVirtuelle { get; set; }
     }
 }

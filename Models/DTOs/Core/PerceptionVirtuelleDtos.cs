@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ProsocAPI.Models.Core;
 using ProsocAPI.Models.Pagination;
 
 namespace ProsocAPI.Models.DTOs.Core
@@ -14,6 +15,13 @@ namespace ProsocAPI.Models.DTOs.Core
 
         [StringLength(500)]
         public string? Observation { get; set; }
+    }
+
+    public class PerceptionVirtuelleAnnulerDto
+    {
+        [Required]
+        [StringLength(500, MinimumLength = 1)]
+        public string Motif { get; set; } = string.Empty;
     }
 
     public class PerceptionVirtuelleConfirmerResultDto
@@ -80,6 +88,11 @@ namespace ProsocAPI.Models.DTOs.Core
         public int NombreCollectes { get; set; }
         public DateTime DatePerception { get; set; }
         public string? Observation { get; set; }
+        public string StatutMetier { get; set; } = PerceptionVirtuelleStatuts.Confirmee;
+        public string? MotifAnnulation { get; set; }
+        public DateTime? DateAnnulation { get; set; }
+        public int? AnnuleParUtilisateurId { get; set; }
+        public string? AnnuleParNom { get; set; }
         public List<PerceptionVirtuelleLigneReadDto> Lignes { get; set; } = new();
     }
 

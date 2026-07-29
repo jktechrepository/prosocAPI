@@ -89,4 +89,17 @@ namespace ProsocAPI.Models.DTOs.Core
         public string FraisPenaliteCode { get; set; } = string.Empty;
         public bool RetardCotisationActive { get; set; }
     }
+
+    public class WalletVirtuelParametresReadDto
+    {
+        public decimal PlafondSolde { get; set; }
+        public DateTime? DateModification { get; set; }
+        public int? ModifieParUtilisateurId { get; set; }
+        public string? ModifieParNom { get; set; }
+    }
+
+    public class WalletVirtuelParametresUpdateDto
+    {
+        public decimal PlafondSolde { get; set; }
+    }
 }

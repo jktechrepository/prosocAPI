@@ -12,6 +12,9 @@ namespace ProsocAPI.Controllers
     [Authorize(Roles = "Admin,Percepteur,Financier")]
     public class PerceptionVirtuelleController : ControllerBase
     {
+        private const string ReadPermission = "READ_PERCEPTION_VIRTUAL";
+        private const string ConfirmPermission = "CONFIRM_PERCEPTION_VIRTUAL";
+
         private readonly IPerceptionVirtuelleService _perceptionService;
         private readonly IPerceptionVirtuelleExportService _exportService;
         private readonly ILogger<PerceptionVirtuelleController> _logger;
@@ -26,6 +29,17 @@ namespace ProsocAPI.Controllers
             _logger = logger;
         }
 
+        private bool HasPermission(string permission)
+        {
+            if (User.IsInRole("Admin") || User.IsInRole("SuperAdmin"))
+                return true;
+
+            return User.HasClaim("permission", permission);
+        }
+
+        private ActionResult ForbiddenPermission(string permission) =>
+            StatusCode(403, new { message = $"Permission requise : {permission}" });
+
         [HttpGet("collectes-en-attente")]
         public async Task<ActionResult<PaginatedResponse<CollecteVirtuelleEnAttenteDto>>> GetCollectesEnAttente(
             [FromQuery] int? agentId,
@@ -34,6 +48,9 @@ namespace ProsocAPI.Controllers
             [FromQuery] PaginationRequest pagination,
             CancellationToken ct = default)
         {
+            if (!HasPermission(ReadPermission))
+                return ForbiddenPermission(ReadPermission);
+
             try
             {
                 var result = await _perceptionService.GetCollectesEnAttenteAsync(
@@ -51,6 +68,9 @@ namespace ProsocAPI.Controllers
         public async Task<ActionResult<List<PerceptionVirtuelleSyntheseAgentDto>>> GetSyntheseAgents(
             CancellationToken ct = default)
         {
+            if (!HasPermission(ReadPermission))
+                return ForbiddenPermission(ReadPermission);
+
             try
             {
                 return Ok(await _perceptionService.GetSyntheseAgentsAsync(ct));
@@ -69,6 +89,9 @@ namespace ProsocAPI.Controllers
             [FromQuery] PaginationRequest pagination,
             CancellationToken ct = default)
         {
+            if (!HasPermission(ReadPermission))
+                return ForbiddenPermission(ReadPermission);
+
             try
             {
                 var utilisateurId = CurrentUserResolver.GetCurrentUtilisateurId(User);
@@ -102,6 +125,9 @@ namespace ProsocAPI.Controllers
             [FromQuery] PaginationRequest pagination,
             CancellationToken ct = default)
         {
+            if (!HasPermission(ReadPermission))
+                return ForbiddenPermission(ReadPermission);
+
             try
             {
                 var filtres = new PerceptionVirtuelleHistoriqueFiltreDto
@@ -129,6 +155,9 @@ namespace ProsocAPI.Controllers
             [FromQuery] DateTime? dateFin,
             CancellationToken ct = default)
         {
+            if (!HasPermission(ReadPermission))
+                return ForbiddenPermission(ReadPermission);
+
             try
             {
                 var result = await _perceptionService.GetReconciliationAsync(agentId, dateDebut, dateFin, ct);
@@ -153,6 +182,9 @@ namespace ProsocAPI.Controllers
             [FromQuery] string format = "excel",
             CancellationToken ct = default)
         {
+            if (!HasPermission(ReadPermission))
+                return ForbiddenPermission(ReadPermission);
+
             try
             {
                 if (!string.Equals(format, "excel", StringComparison.OrdinalIgnoreCase))
@@ -177,6 +209,9 @@ namespace ProsocAPI.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<PerceptionVirtuelleReadDto>> GetById(int id, CancellationToken ct = default)
         {
+            if (!HasPermission(ReadPermission))
+                return ForbiddenPermission(ReadPermission);
+
             try
             {
                 var perception = await _perceptionService.GetByIdAsync(id, ct);
@@ -196,6 +231,9 @@ namespace ProsocAPI.Controllers
             [FromBody] PerceptionVirtuelleConfirmerDto dto,
             CancellationToken ct = default)
         {
+            if (!HasPermission(ConfirmPermission))
+                return ForbiddenPermission(ConfirmPermission);
+
             try
             {
                 var utilisateurId = CurrentUserResolver.GetCurrentUtilisateurId(User);
@@ -207,6 +245,9 @@ namespace ProsocAPI.Controllers
                 if (result.CodeErreur == "COLLECTE_DEJA_PERCUE")
                     return Conflict(result);
 
+                if (result.CodeErreur == "SESSION_CAISSIER_REQUISE")
+                    return BadRequest(result);
+
                 return BadRequest(result);
             }
             catch (UnauthorizedAccessException ex)
@@ -217,6 +258,43 @@ namespace ProsocAPI.Controllers
             {
                 _logger.LogError(ex, "Erreur confirmation perception virtuelle");
                 return StatusCode(500, new { error = "Erreur lors de la confirmation de la perception" });
+            }
+        }
+
+        [HttpPost("{id:int}/annuler")]
+        [Authorize(Roles = "Admin,Financier")]
+        public async Task<ActionResult<PerceptionVirtuelleConfirmerResultDto>> Annuler(
+            int id,
+            [FromBody] PerceptionVirtuelleAnnulerDto dto,
+            CancellationToken ct = default)
+        {
+            if (!HasPermission(ConfirmPermission))
+                return ForbiddenPermission(ConfirmPermission);
+
+            try
+            {
+                var utilisateurId = CurrentUserResolver.GetCurrentUtilisateurId(User);
+                var result = await _perceptionService.AnnulerPerceptionAsync(utilisateurId, id, dto, ct);
+
+                if (result.Succes)
+                    return Ok(result);
+
+                if (result.CodeErreur == "DEJA_ANNULEE")
+                    return Conflict(result);
+
+                if (result.CodeErreur == "PERCEPTION_INTROUVABLE")
+                    return NotFound(result);
+
+                return BadRequest(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur annulation perception virtuelle {Id}", id);
+                return StatusCode(500, new { error = "Erreur lors de l'annulation de la perception" });
             }
         }
     }

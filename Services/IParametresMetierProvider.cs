@@ -33,6 +33,13 @@ namespace ProsocAPI.Services
             int utilisateurId,
             CancellationToken ct = default);
 
+        Task<WalletVirtuelOptions> GetWalletVirtuelAsync(CancellationToken ct = default);
+        Task<WalletVirtuelParametresReadDto> GetWalletVirtuelReadAsync(CancellationToken ct = default);
+        Task<WalletVirtuelParametresReadDto> UpdateWalletVirtuelAsync(
+            WalletVirtuelParametresUpdateDto dto,
+            int utilisateurId,
+            CancellationToken ct = default);
+
         void InvalidateCache(string code);
     }
 }

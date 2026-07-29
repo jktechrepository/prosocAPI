@@ -207,6 +207,7 @@ namespace Prosoc.Data
                         new Permission { Nom = "CREATE_ADHESION", Description = "Créer une adhésion", DateCreation = DateTime.Now },
                         new Permission { Nom = "READ_ADHESION", Description = "Voir les adhésions",      DateCreation = DateTime.Now },
                         new Permission { Nom = "UPDATE_ADHESION", Description = "Modifier une adhésion", DateCreation = DateTime.Now },
+                        new Permission { Nom = "ENCODE_ADHESION_NIVEAU_2", Description = "Encoder / valider le dossier adhésion niveau 2 (encodeur)", DateCreation = DateTime.Now },
                         new Permission { Nom = "DELETE_ADHESION", Description = "Supprimer une adhésion", DateCreation = DateTime.Now },
                         
                         // Permissions Assureur
@@ -379,6 +380,9 @@ namespace Prosoc.Data
                         new Permission { Nom = "READ_DEMANDE_RETRAIT_AGENT", Description = "Consulter les demandes de retrait agent", DateCreation = DateTime.Now },
                         new Permission { Nom = "VALIDATE_DEMANDE_RETRAIT_AGENT", Description = "Valider une demande de retrait agent et générer le jeton", DateCreation = DateTime.Now },
                         new Permission { Nom = "CONFIRM_RETRAIT_AGENT", Description = "Payer un retrait agent au guichet", DateCreation = DateTime.Now },
+                        new Permission { Nom = "CREATE_DEMANDE_RECHARGE_WALLET_VIRTUEL", Description = "Créer une demande de recharge wallet virtuel", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_DEMANDE_RECHARGE_WALLET_VIRTUEL", Description = "Consulter les demandes de recharge wallet virtuel", DateCreation = DateTime.Now },
+                        new Permission { Nom = "CONFIRM_DEMANDE_RECHARGE_WALLET_VIRTUEL", Description = "Confirmer ou rejeter une demande de recharge wallet virtuel", DateCreation = DateTime.Now },
                         new Permission { Nom = "READ_PERCEPTION_VIRTUAL", Description = "Consulter les collectes compte virtuel à percevoir", DateCreation = DateTime.Now },
                         new Permission { Nom = "CONFIRM_PERCEPTION_VIRTUAL", Description = "Confirmer la perception physique des collectes compte virtuel", DateCreation = DateTime.Now },
                         new Permission { Nom = "ACCESS_DASHBOARD_SUPERADMIN", Description = "Accéder au dashboard super administrateur", DateCreation = DateTime.Now },
@@ -953,6 +957,8 @@ namespace Prosoc.Data
                 await EnsureDashboardCaissierPermissionAsync(context, logger);
                 await EnsureCaisseSessionPermissionsAsync(context, logger);
                 await EnsureDemandeRetraitAgentPermissionsAsync(context, logger);
+                await EnsureDemandeRechargeWalletVirtuelPermissionsAsync(context, logger);
+                await EnsureEncodeAdhesionNiveau2PermissionAsync(context, logger);
                 await EnsurePerceptionVirtuellePermissionsAsync(context, logger);
                 await MigrateCaissierRolePermissionsAsync(context, logger);
                 await EnsureChefEquipePermissionsAsync(context, logger);
@@ -1753,6 +1759,10 @@ namespace Prosoc.Data
                 "VALIDATE_DEMANDE_RETRAIT_AGENT",
                 // Wallet virtuel agents (ajouter-solde / modifier-solde-wallet-agents)
                 "UPDATE_WALLET_VIRTUEL",
+                // Demandes de recharge wallet virtuel (jusqu'au plafond)
+                "CREATE_DEMANDE_RECHARGE_WALLET_VIRTUEL",
+                "READ_DEMANDE_RECHARGE_WALLET_VIRTUEL",
+                "CONFIRM_DEMANDE_RECHARGE_WALLET_VIRTUEL",
                 // Rapports performance équipe
                 "GENERATE_RAPPORT",
                 "EXPORT_DATA"
@@ -1861,7 +1871,9 @@ namespace Prosoc.Data
                 // Catalogue assureurs (consultation dossier)
                 "READ_ASSUREUR",
                 // Dashboard encodeur (remplace ACCESS_DASHBOARD_AGENT pour le rôle AA)
-                "ACCESS_DASHBOARD_AGENT_AA"
+                "ACCESS_DASHBOARD_AGENT_AA",
+                // Encodage / validation dossier niveau 2
+                "ENCODE_ADHESION_NIVEAU_2"
             };
 
             noms.Remove("ACCESS_DASHBOARD_AGENT");
@@ -2838,6 +2850,103 @@ namespace Prosoc.Data
             }
 
             await context.SaveChangesAsync();
+        }
+
+        private static async Task EnsureDemandeRechargeWalletVirtuelPermissionsAsync(ProsocDbContext context, ILogger logger)
+        {
+            var permissionDefs = new (string Nom, string Description)[]
+            {
+                ("CREATE_DEMANDE_RECHARGE_WALLET_VIRTUEL", "Créer une demande de recharge wallet virtuel"),
+                ("READ_DEMANDE_RECHARGE_WALLET_VIRTUEL", "Consulter les demandes de recharge wallet virtuel"),
+                ("CONFIRM_DEMANDE_RECHARGE_WALLET_VIRTUEL", "Confirmer ou rejeter une demande de recharge wallet virtuel")
+            };
+
+            foreach (var (nom, description) in permissionDefs)
+            {
+                if (await context.Permissions.AnyAsync(p => p.Nom == nom))
+                    continue;
+
+                var (categorie, action) = ParsePermissionCategorieAndAction(nom);
+                context.Permissions.Add(new Permission
+                {
+                    Nom = nom,
+                    Description = description,
+                    Categorie = categorie,
+                    Action = action,
+                    Statut = true,
+                    DateCreation = DateTime.Now
+                });
+                logger.LogInformation("Permission {Permission} créée.", nom);
+            }
+
+            await context.SaveChangesAsync();
+
+            var permissionNoms = permissionDefs.Select(p => p.Nom).ToArray();
+            var permissions = await context.Permissions
+                .Where(p => permissionNoms.Contains(p.Nom) && p.Statut)
+                .ToListAsync();
+
+            foreach (var roleNom in new[] { "Admin", "Superviseur" })
+            {
+                var role = await context.Roles.FirstOrDefaultAsync(r => r.Nom == roleNom);
+                if (role == null)
+                    continue;
+
+                foreach (var permission in permissions)
+                {
+                    var exists = await context.RolePermissions.AnyAsync(rp =>
+                        rp.RoleId == role.IdRole && rp.PermissionId == permission.IdPermission);
+                    if (exists)
+                        continue;
+
+                    context.RolePermissions.Add(new RolePermission
+                    {
+                        RoleId = role.IdRole,
+                        PermissionId = permission.IdPermission,
+                        DateAttribution = DateTime.Now
+                    });
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        private static async Task EnsureEncodeAdhesionNiveau2PermissionAsync(ProsocDbContext context, ILogger logger)
+        {
+            const string nom = "ENCODE_ADHESION_NIVEAU_2";
+            if (!await context.Permissions.AnyAsync(p => p.Nom == nom))
+            {
+                context.Permissions.Add(new Permission
+                {
+                    Nom = nom,
+                    Description = "Encoder / valider le dossier adhésion niveau 2 (encodeur)",
+                    Categorie = "ADHESION",
+                    Action = "ENCODE",
+                    Statut = true,
+                    DateCreation = DateTime.Now
+                });
+                await context.SaveChangesAsync();
+                logger.LogInformation("Permission {Permission} créée.", nom);
+            }
+
+            var permission = await context.Permissions.FirstAsync(p => p.Nom == nom && p.Statut);
+            var aaRole = await context.Roles.FirstOrDefaultAsync(r => r.Nom == "Agent (AA)");
+            if (aaRole == null)
+                return;
+
+            var exists = await context.RolePermissions.AnyAsync(rp =>
+                rp.RoleId == aaRole.IdRole && rp.PermissionId == permission.IdPermission);
+            if (exists)
+                return;
+
+            context.RolePermissions.Add(new RolePermission
+            {
+                RoleId = aaRole.IdRole,
+                PermissionId = permission.IdPermission,
+                DateAttribution = DateTime.Now
+            });
+            await context.SaveChangesAsync();
+            logger.LogInformation("Permission {Permission} attribuée au rôle Agent (AA).", nom);
         }
 
         private static async Task EnsurePerceptionVirtuellePermissionsAsync(ProsocDbContext context, ILogger logger)

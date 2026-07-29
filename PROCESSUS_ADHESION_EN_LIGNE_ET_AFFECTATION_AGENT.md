@@ -413,7 +413,7 @@ Même pour une adhésion en ligne payée, le **`StatutDossier`** reste souvent `
 
 **Lecture fiche :** `GET /api/Adhesion/{id}/fiche-encodeur` — permission `READ_ADHESION`
 
-**Complétion / validation :** `PUT /api/Adhesion/{id}/niveau-2-encodeur` — permission `UPDATE_ADHESION`
+**Complétion / validation :** `PUT /api/Adhesion/{id}/niveau-2-encodeur` — permission `ENCODE_ADHESION_NIVEAU_2`
 
 Corps : dépendants, personne de contact, antécédents, flag `valider: true`
 
@@ -443,7 +443,7 @@ Source : `Adhesion.AgentId` → `AgentCreateur` de l'adhésion active.
 | `PUT` | `/api/Agent/{agentId}/affecter-affilies` | Admin, Superviseur | **Affectation / transfert** |
 | `GET` | `/api/Agent/{agentId}/affilies` | Authentifié | Portefeuille d'un agent |
 | `GET` | `/api/Adhesion/{id}/fiche-encodeur` | `READ_ADHESION` | Fiche encodeur |
-| `PUT` | `/api/Adhesion/{id}/niveau-2-encodeur` | `UPDATE_ADHESION` | Validation dossier |
+| `PUT` | `/api/Adhesion/{id}/niveau-2-encodeur` | `ENCODE_ADHESION_NIVEAU_2` | Validation dossier |
 | `GET` | `/api/DashboardAgentAA/dossiers-a-traiter` | Agent (AA) | Dossiers à traiter (agent-scoped) |
 
 Fichiers source :

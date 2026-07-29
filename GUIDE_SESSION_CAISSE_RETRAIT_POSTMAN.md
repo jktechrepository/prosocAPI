@@ -14,6 +14,7 @@ Documents connexes :
 
 - [`FRONTEND_INTEGRATION_RETRAIT_AGENT.md`](FRONTEND_INTEGRATION_RETRAIT_AGENT.md) — intégration complète
 - [`PROCESSUS_RETRAIT_AGENT.md`](PROCESSUS_RETRAIT_AGENT.md) — workflow métier
+- [`PROCESSUS_PERCEPTION_VIRTUELLE.md`](PROCESSUS_PERCEPTION_VIRTUELLE.md) — **même prérequis session** pour `POST /api/PerceptionVirtuelle/confirmer` (entrée caisse + crédit wallet)
 - [`API-DOCUMENTATION-NEW.md`](API-DOCUMENTATION-NEW.md) — référence API
 
 ---

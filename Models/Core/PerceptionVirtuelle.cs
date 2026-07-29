@@ -32,6 +32,17 @@ namespace ProsocAPI.Models.Core
         [StringLength(500)]
         public string? Observation { get; set; }
 
+        /// <summary>CONFIRMEE ou ANNULEE.</summary>
+        [Required, StringLength(20)]
+        public string StatutMetier { get; set; } = PerceptionVirtuelleStatuts.Confirmee;
+
+        [StringLength(500)]
+        public string? MotifAnnulation { get; set; }
+
+        public DateTime? DateAnnulation { get; set; }
+
+        public int? AnnuleParUtilisateurId { get; set; }
+
         public DateTime DateCreation { get; set; } = DateTime.Now;
 
         public DateTime? DateModification { get; set; }
@@ -47,6 +58,11 @@ namespace ProsocAPI.Models.Core
         [JsonIgnore]
         [ValidateNever]
         public virtual Utilisateur PercepteurUtilisateur { get; set; } = null!;
+
+        [ForeignKey(nameof(AnnuleParUtilisateurId))]
+        [JsonIgnore]
+        [ValidateNever]
+        public virtual Utilisateur? AnnuleParUtilisateur { get; set; }
 
         [ForeignKey(nameof(DeviseId))]
         [JsonIgnore]

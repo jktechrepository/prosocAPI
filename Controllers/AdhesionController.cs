@@ -1800,8 +1800,8 @@ namespace ProsocAPI.Controllers
             if (deny != null)
                 return deny;
 
-            if (!HasPermission("UPDATE_ADHESION"))
-                return ForbiddenPermission("UPDATE_ADHESION");
+            if (!HasPermission("ENCODE_ADHESION_NIVEAU_2"))
+                return ForbiddenPermission("ENCODE_ADHESION_NIVEAU_2");
 
             if (input == null)
                 return BadRequest("Le corps de la requête est obligatoire.");

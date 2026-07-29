@@ -65,6 +65,7 @@ namespace Prosoc.Data
         // ✅ MODULE RETRAITS AGENTS
         // ═════════════════════════════════════════════════════════════════════════════════════════════════
         public DbSet<DemandeRetraitAgent> DemandesRetraitAgents { get; set; } = null!;
+        public DbSet<DemandeRechargeWalletVirtuel> DemandesRechargeWalletVirtuel { get; set; } = null!;
         public DbSet<JetonRetrait> JetonsRetraits { get; set; } = null!;
         public DbSet<SessionCaisse> SessionsCaisses { get; set; } = null!;
         public DbSet<MouvementCaisse> MouvementsCaisses { get; set; } = null!;
@@ -583,6 +584,12 @@ namespace Prosoc.Data
                 .HasForeignKey(m => m.WalletMouvementId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            modelBuilder.Entity<MouvementCaisse>()
+                .HasOne(m => m.PerceptionVirtuelle)
+                .WithMany()
+                .HasForeignKey(m => m.PerceptionVirtuelleId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<DemandeRetraitAgent>()
                 .HasOne(d => d.OperateurPaiement)
                 .WithMany()
@@ -594,6 +601,39 @@ namespace Prosoc.Data
                 .WithMany()
                 .HasForeignKey(d => d.WalletMouvementId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<DemandeRechargeWalletVirtuel>()
+                .HasOne(d => d.Agent)
+                .WithMany()
+                .HasForeignKey(d => d.AgentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DemandeRechargeWalletVirtuel>()
+                .HasOne(d => d.DemandePar)
+                .WithMany()
+                .HasForeignKey(d => d.DemandeParUtilisateurId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DemandeRechargeWalletVirtuel>()
+                .HasOne(d => d.ConfirmePar)
+                .WithMany()
+                .HasForeignKey(d => d.ConfirmeParUtilisateurId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<DemandeRechargeWalletVirtuel>()
+                .HasOne(d => d.RejetePar)
+                .WithMany()
+                .HasForeignKey(d => d.RejeteParUtilisateurId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<DemandeRechargeWalletVirtuel>()
+                .HasOne(d => d.WalletVirtuelMouvement)
+                .WithMany()
+                .HasForeignKey(d => d.WalletVirtuelMouvementId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<DemandeRechargeWalletVirtuel>()
+                .HasIndex(d => new { d.AgentId, d.StatutDemande });
 
             modelBuilder.Entity<JetonRetrait>()
                 .HasOne(j => j.OperateurUtilisateur)
@@ -614,8 +654,7 @@ namespace Prosoc.Data
                 .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<PerceptionVirtuelleLigne>()
-                .HasIndex(l => l.CollecteId)
-                .IsUnique();
+                .HasIndex(l => l.CollecteId);
 
             modelBuilder.Entity<PerceptionVirtuelleLigne>()
                 .HasOne(l => l.PerceptionVirtuelle)
@@ -652,6 +691,12 @@ namespace Prosoc.Data
                 .WithMany()
                 .HasForeignKey(p => p.PercepteurUtilisateurId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<PerceptionVirtuelle>()
+                .HasOne(p => p.AnnuleParUtilisateur)
+                .WithMany()
+                .HasForeignKey(p => p.AnnuleParUtilisateurId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<PerceptionVirtuelle>()
                 .HasOne(p => p.Devise)

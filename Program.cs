@@ -79,9 +79,12 @@ builder.Services.Configure<AgentMaashOptions>(
     builder.Configuration.GetSection(AgentMaashOptions.SectionName));
 builder.Services.Configure<RetraitAgentOptions>(
     builder.Configuration.GetSection(RetraitAgentOptions.SectionName));
+builder.Services.Configure<WalletVirtuelOptions>(
+    builder.Configuration.GetSection(WalletVirtuelOptions.SectionName));
 builder.Services.AddScoped<ICaisseService, CaisseService>();
 builder.Services.AddScoped<IPerceptionVirtuelleService, PerceptionVirtuelleService>();
 builder.Services.AddScoped<IPerceptionVirtuelleExportService, PerceptionVirtuelleExportService>();
+builder.Services.AddScoped<IDemandeRechargeWalletVirtuelService, DemandeRechargeWalletVirtuelService>();
 builder.Services.AddScoped<IAgentMaashRetenueService, AgentMaashRetenueService>();
 builder.Services.AddHostedService<AgentMaashRetenueBackgroundService>();
 builder.Services.AddScoped<IAgentRepository, AgentService>();

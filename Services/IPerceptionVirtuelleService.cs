@@ -37,6 +37,12 @@ namespace ProsocAPI.Services
             PerceptionVirtuelleConfirmerDto dto,
             CancellationToken ct = default);
 
+        Task<PerceptionVirtuelleConfirmerResultDto> AnnulerPerceptionAsync(
+            int annuleParUtilisateurId,
+            int perceptionId,
+            PerceptionVirtuelleAnnulerDto dto,
+            CancellationToken ct = default);
+
         Task<(decimal Montant, int Nombre)> GetTotauxVirtuelsEnAttenteAsync(CancellationToken ct = default);
     }
 }

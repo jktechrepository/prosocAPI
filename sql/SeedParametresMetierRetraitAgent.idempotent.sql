@@ -48,6 +48,13 @@ SELECT
     NOW()
 WHERE NOT EXISTS (SELECT 1 FROM ParametresMetier WHERE Code = 'PENALITE');
 
+INSERT INTO ParametresMetier (Code, ValeurJson, DateCreation)
+SELECT
+    'WALLET_VIRTUEL',
+    '{"plafondSolde":100}',
+    NOW()
+WHERE NOT EXISTS (SELECT 1 FROM ParametresMetier WHERE Code = 'WALLET_VIRTUEL');
+
 COMMIT;
 
-SELECT '✅ Paramètres métier seedés (RETRAIT_AGENT, AGENT_MAASH, ARRIERES, PENALITE).' AS Resultat;
+SELECT '✅ Paramètres métier seedés (RETRAIT_AGENT, AGENT_MAASH, ARRIERES, PENALITE, WALLET_VIRTUEL).' AS Resultat;

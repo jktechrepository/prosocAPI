@@ -2,9 +2,11 @@
 
 Ce document décrit le **workflow de perception physique** des collectes effectuées via **compte virtuel** (`VIRTUAL_ACCOUNT`) par les agents (AT), après débit de leur **wallet virtuel**.
 
+> **Synonyme métier** : ce que certains écrans / équipes appellent **« reversement de collectes »** (ou remises AT) correspond ici à la **Perception Virtuelle** (`POST /api/PerceptionVirtuelle/confirmer`). Ce n’est **pas** un crédit inverse du wallet, ni un `MouvementCaisse`.
+
 Documents connexes :
 
-- [`API-DOCUMENTATION-NEW.md`](API-DOCUMENTATION-NEW.md) — référence API complète (section Dashboard Percepteur)
+- [`API-DOCUMENTATION-NEW.md`](API-DOCUMENTATION-NEW.md) — référence API complète (section Perception Virtuelle / Dashboard Percepteur)
 - [`PROCESSUS_RETRAIT_AGENT.md`](PROCESSUS_RETRAIT_AGENT.md) — retrait commission agent (module distinct, caisse guichet)
 
 ---
@@ -107,9 +109,86 @@ C'est l'endpoint qui enregistre que le percepteur a bien perçu l'argent physiqu
 
 ### Effets en base
 
-- Création d'un enregistrement `PerceptionVirtuelle` + lignes `PerceptionVirtuelleLigne`
+- Création d'un enregistrement `PerceptionVirtuelle` (`StatutMetier = CONFIRMEE`) + lignes `PerceptionVirtuelleLigne`
 - Mise à jour des collectes : `StatutPerception = PERCU`, `DatePerception`, `PercepteurUtilisateurId`, `PerceptionVirtuelleId`
 - Liaison optionnelle au `WalletVirtuelMouvementId` sur chaque ligne
+
+### Annulation documentée (Admin / Financier)
+
+**`POST /api/PerceptionVirtuelle/{id}/annuler`**
+
+```json
+{ "motif": "Erreur de lot — collectes incorrectes" }
+```
+
+| Élément | Détail |
+|---------|--------|
+| Rôles | `Admin`, `Financier` |
+| Permission | `CONFIRM_PERCEPTION_VIRTUAL` (Admin bypass) |
+| Effets | `StatutMetier = ANNULEE` ; `MotifAnnulation`, `DateAnnulation`, `AnnuleParUtilisateurId` ; lignes `Statut = false` ; collectes → `NON_PERCU` (liens perception effacés) |
+| Conservé | L’en-tête + lignes restent en base pour audit |
+| Wallet / caisse | Aucun crédit wallet ; aucun `MouvementCaisse` |
+| Suite | Les collectes redeviennent éligibles à `collectes-en-attente` et à une nouvelle confirmation |
+
+Erreurs : `MOTIF_REQUIS` (400), `PERCEPTION_INTROUVABLE` (404), `DEJA_ANNULEE` (409).
+
+Migration : `sql/MigratePerceptionVirtuelleAnnulation.idempotent.sql` (colonnes annulation + index non unique sur `CollecteId` des lignes).
+
+### Ce que la confirmation **fait** (CW)
+
+| Action | À la confirmation |
+|--------|-------------------|
+| Journal `PerceptionVirtuelle` + collectes `PERCU` | Oui |
+| `ENTREE` `MouvementCaisse` source `PERCEPTION_VIRTUELLE` | Oui — **session caisse OUVERTE** du confirmanteur requise (`SESSION_CAISSIER_REQUISE` sinon) |
+| `CREDIT` wallet AT source `REMISE_PERCEPTION_VIRTUELLE` | Oui — même montant que le débit VA initial (par collecte) |
+
+### Annulation (reverse CW)
+
+| Action | À l’annulation |
+|--------|----------------|
+| `StatutMetier = ANNULEE` + collectes `NON_PERCU` | Oui |
+| Soft-disable (`Statut=false`) de l’`ENTREE` caisse liée | Oui — solde session recalculé hors mouvement inactif |
+| `DEBIT` wallet source `ANNUL_REMISE_PERCEPTION_VIRT` | Oui — float re-consommé |
+
+Prérequis UX confirmation : `POST /api/Caisse/session/ouvrir` avec le **même** JWT que `POST .../confirmer`.
+
+### Ce que la confirmation **ne fait plus** (obsolète)
+
+| Action | À la confirmation ? |
+|--------|---------------------|
+| Crédit / annulation du débit `COLLECTE_COMPTE_VIRTUEL` | Non — le débit initial reste ; un **CREDIT** distinct `REMISE_PERCEPTION_VIRTUELLE` restaure le float |
+| Recharge float (`PUT .../ajouter-solde`) | Non — flux distinct |
+
+### Chaîne de liens WalletVirtuel ↔ Collecte ↔ Perception
+
+```text
+Collecte.IdCollecte
+  ↔ WalletVirtuelMouvement.ReferenceExterne  (DEBIT / COLLECTE_COMPTE_VIRTUEL, créé à l’encaissement VA)
+  ↔ PerceptionVirtuelleLigne.WalletVirtuelMouvementId
+  ↔ Collecte.PerceptionVirtuelleId
+  ↔ MouvementCaisse.PerceptionVirtuelleId (ENTREE PERCEPTION_VIRTUELLE)
+  ↔ WalletVirtuelMouvement CREDIT REMISE_PERCEPTION_VIRTUELLE (ReferenceExterne = IdCollecte)
+```
+
+Le débit est effectué à la **création** de la collecte (`CommissionService` → `WalletVirtuelPaymentService.DebitAsync`) sur l’agent gestionnaire de l’adhésion (`adhesion.AgentId`), pas sur l’affilié.
+
+### Auth / permissions
+
+| Couche | Règle |
+|--------|-------|
+| JWT rôles | `Admin`, `Percepteur`, `Financier` ; `historique-global` / `reconciliation` / `export` / `annuler` → `Admin,Financier` |
+| Claims | Lectures → `READ_PERCEPTION_VIRTUAL` ; `confirmer` / `annuler` → `CONFIRM_PERCEPTION_VIRTUAL` (Admin / SuperAdmin bypass) |
+| Déploiement | Reconnecter les JWT après migration permissions pour charger les claims |
+
+### Où trouver le cash (rapprochement)
+
+| Origine | Journal | Module |
+|---------|---------|--------|
+| ESPECE / FlexPay guichet | `MouvementCaisse` (session caisse) | `/api/Caisse/*` |
+| VA confirmé terrain | `PerceptionVirtuelle` **et** `MouvementCaisse` (`PERCEPTION_VIRTUELLE`) | `/api/PerceptionVirtuelle/*` + `/api/Caisse/*` |
+| Float agent | débit VA + crédit remise (net ≈ 0 si `PERCU`) | `/api/WalletVirtuelAgent/.../mouvements` |
+
+Un Financier rapproche via `GET reconciliation` + `historique-global` + mouvements caisse source `PERCEPTION_VIRTUELLE`. L’annulation soft-disable l’entrée caisse et re-débite le wallet.
 
 ---
 
@@ -153,7 +232,9 @@ Base : `/api/PerceptionVirtuelle/*`
 | GET | `/api/PerceptionVirtuelle/historique-global` | Journal global (Admin / Financier) — filtres `percepteurUtilisateurId`, `agentId`, dates |
 | GET | `/api/PerceptionVirtuelle/reconciliation` | Synthèse réconciliation VA + anomalies (Admin / Financier) |
 | GET | `/api/PerceptionVirtuelle/export` | Export Excel rapport perception (Admin / Financier) |
-| GET | `/api/PerceptionVirtuelle/{id}` | Détail perception + lignes |
+| GET | `/api/PerceptionVirtuelle/{id}` | Détail perception + lignes (y compris `ANNULEE`) |
+| POST | `/api/PerceptionVirtuelle/confirmer` | Confirmer perception terrain |
+| POST | `/api/PerceptionVirtuelle/{id}/annuler` | Annuler perception (Admin / Financier) |
 
 ### `GET collectes-en-attente` — filtres query
 
@@ -263,9 +344,10 @@ Rôle requis : `Percepteur` (certaines routes aussi `Admin`).
 
 | Module | Acteur | Objet | Session caisse |
 |--------|--------|-------|----------------|
-| **PerceptionVirtuelle** | Percepteur | Collectes VA débitées sur wallet virtuel agent | Non |
+| **PerceptionVirtuelle** (« reversement » terrain) | Percepteur, Financier, Admin | Remise cash AT → mutuelle après débit VA | Non |
+| WalletVirtuel `ajouter-solde` | Superviseur / IT (+ hierarchie) | Recharge du float wallet agent | Non |
 | RetraitAgent (`utiliser-jeton`) | Caissier, Percepteur | Retrait commission agent (jeton) | Oui |
-| Caisse (`session/ouvrir`) | Caissier | Opérations guichet classiques | Oui |
+| Caisse (`session/ouvrir`) | Caissier, Percepteur, Financier | Opérations guichet classiques | Oui |
 
 ---
 
@@ -274,6 +356,8 @@ Rôle requis : `Percepteur` (certaines routes aussi `Admin`).
 ```bash
 mysql -h <host> -u <user> -p <database> < sql/MigratePerceptionVirtuelle.production.idempotent.sql
 mysql -h <host> -u <user> -p <database> < sql/MigratePerceptionVirtuellePermissions.idempotent.sql
+mysql -h <host> -u <user> -p <database> < sql/MigratePerceptionVirtuelleAnnulation.idempotent.sql
+mysql -h <host> -u <user> -p <database> < sql/MigratePerceptionVirtuelleCaisseWallet.idempotent.sql
 ```
 
 ---

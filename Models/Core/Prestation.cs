@@ -23,7 +23,7 @@ namespace ProsocAPI.Models.Core
         // 🆕 NOUVEAUX CHAMPS
         [Required]
         [Column(TypeName = "decimal(18,2)")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Le montant doit être supérieur à 0")]
+        [Range(0, double.MaxValue, ErrorMessage = "Le montant doit être supérieur ou égal à 0")]
         public decimal Montant { get; set; }
         
         [Required]

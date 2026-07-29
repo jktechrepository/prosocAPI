@@ -27,6 +27,7 @@ namespace ProsocAPI.Services
         private readonly IOptions<AgentMaashOptions> _agentMaashDefaults;
         private readonly IOptions<ArrieresOptions> _arrieresDefaults;
         private readonly IOptions<PenaliteOptions> _penaliteDefaults;
+        private readonly IOptions<WalletVirtuelOptions> _walletVirtuelDefaults;
         private readonly ILogger<ParametresMetierProvider> _logger;
 
         public ParametresMetierProvider(
@@ -36,6 +37,7 @@ namespace ProsocAPI.Services
             IOptions<AgentMaashOptions> agentMaashDefaults,
             IOptions<ArrieresOptions> arrieresDefaults,
             IOptions<PenaliteOptions> penaliteDefaults,
+            IOptions<WalletVirtuelOptions> walletVirtuelDefaults,
             ILogger<ParametresMetierProvider> logger)
         {
             _db = db;
@@ -44,6 +46,7 @@ namespace ProsocAPI.Services
             _agentMaashDefaults = agentMaashDefaults;
             _arrieresDefaults = arrieresDefaults;
             _penaliteDefaults = penaliteDefaults;
+            _walletVirtuelDefaults = walletVirtuelDefaults;
             _logger = logger;
         }
 
@@ -220,6 +223,40 @@ namespace ProsocAPI.Services
             return MapPenaliteRead(options, entity);
         }
 
+        public Task<WalletVirtuelOptions> GetWalletVirtuelAsync(CancellationToken ct = default) =>
+            GetOrLoadAsync(ParametreMetierCodes.WalletVirtuel, _walletVirtuelDefaults.Value, ct);
+
+        public async Task<WalletVirtuelParametresReadDto> GetWalletVirtuelReadAsync(CancellationToken ct = default)
+        {
+            var entity = await GetEntityWithAuditAsync(ParametreMetierCodes.WalletVirtuel, ct);
+            var options = entity == null
+                ? await GetWalletVirtuelAsync(ct)
+                : Deserialize<WalletVirtuelOptions>(entity.ValeurJson) ?? _walletVirtuelDefaults.Value;
+            return MapWalletVirtuelRead(options, entity);
+        }
+
+        public async Task<WalletVirtuelParametresReadDto> UpdateWalletVirtuelAsync(
+            WalletVirtuelParametresUpdateDto dto,
+            int utilisateurId,
+            CancellationToken ct = default)
+        {
+            var validationError = WalletVirtuelParametresValidator.Validate(dto);
+            if (validationError != null)
+                throw new ArgumentException(validationError);
+
+            var options = new WalletVirtuelOptions
+            {
+                PlafondSolde = dto.PlafondSolde
+            };
+
+            var entity = await UpsertAsync(ParametreMetierCodes.WalletVirtuel, options, utilisateurId, ct);
+            InvalidateCache(ParametreMetierCodes.WalletVirtuel);
+            _logger.LogInformation(
+                "Paramètres WalletVirtuel mis à jour par utilisateur {UserId}", utilisateurId);
+
+            return MapWalletVirtuelRead(options, entity);
+        }
+
         private async Task<TOptions> GetOrLoadAsync<TOptions>(
             string code,
             TOptions defaults,
@@ -380,6 +417,17 @@ namespace ProsocAPI.Services
                 DelaiGraceJours = options.DelaiGraceJours,
                 FraisPenaliteCode = options.FraisPenaliteCode,
                 RetardCotisationActive = options.RetardCotisationActive,
+                DateModification = entity?.DateModification,
+                ModifieParUtilisateurId = entity?.ModifieParUtilisateurId,
+                ModifieParNom = entity?.ModifiePar?.NomUtilisateur
+            };
+
+        private static WalletVirtuelParametresReadDto MapWalletVirtuelRead(
+            WalletVirtuelOptions options,
+            ParametreMetier? entity) =>
+            new()
+            {
+                PlafondSolde = options.PlafondSolde,
                 DateModification = entity?.DateModification,
                 ModifieParUtilisateurId = entity?.ModifieParUtilisateurId,
                 ModifieParNom = entity?.ModifiePar?.NomUtilisateur

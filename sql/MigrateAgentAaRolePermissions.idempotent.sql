@@ -76,7 +76,8 @@ INSERT INTO tmp_aa_permission_noms (Nom) VALUES
     ('CREATE_ANTECEDENT'),
     ('READ_ANTECEDENT'),
     ('UPDATE_ANTECEDENT'),
-    ('READ_ASSUREUR');
+    ('READ_ASSUREUR'),
+    ('ENCODE_ADHESION_NIVEAU_2');
 
 INSERT INTO Permissions (Nom, Description, Categorie, Action, Statut, DateCreation)
 SELECT 'ACCESS_DASHBOARD_AGENT_AA', 'Accéder au dashboard agent administratif (encodeur)', 'DASHBOARD_AGENT_AA', 'ACCESS', 1, NOW()

@@ -11,5 +11,6 @@ namespace ProsocAPI.Models.Core
         public const string CollecteEspece = "COLLECTE_ESPECE";
         public const string CollecteElectronique = "COLLECTE_ELECTRONIQUE";
         public const string RetraitAgent = "RETRAIT_AGENT";
+        public const string PerceptionVirtuelle = "PERCEPTION_VIRTUELLE";
     }
 }
