@@ -20,7 +20,7 @@ Documents complémentaires :
 | Base URL API | ex. `https://dev-prosoc.asdc-rdc.org` (**sans** suffixe `/api`) |
 | Permissions paramètres | `READ_PARAMETRES_METIER`, `UPDATE_PARAMETRES_METIER` |
 | Permissions demande | `CREATE_DEMANDE_RETRAIT_AGENT`, `READ_DEMANDE_RETRAIT_AGENT`, `VALIDATE_DEMANDE_RETRAIT_AGENT` |
-| Permissions caisse | `OPEN_CAISSIER_SESSION`, `CLOSE_CAISSIER_SESSION`, `READ_CAISSIER_SESSION`, `CONFIRM_RETRAIT_AGENT` |
+| Permissions caisse | `OPEN_CAISSIER_SESSION`, `CLOSE_CAISSIER_SESSION`, `READ_CAISSIER_SESSION`, `CONFIRM_RETRAIT_AGENT`, `MARQUER_PAYER_RETRAIT_AGENT`, `READ_RETRAIT_AGENT` |
 
 ### Reconnexion après déploiement
 
@@ -82,16 +82,18 @@ Les permissions sont des claims multiples `permission` dans le JWT. **Admin** et
 | `READ_PARAMETRES_METIER` | Admin, IT | Afficher menu Paramètres > Retrait agent |
 | `UPDATE_PARAMETRES_METIER` | Admin, IT | Bouton Enregistrer actif sur le formulaire |
 | `CREATE_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur (+ Admin bypass) | Créer une demande / helpers période-solde |
-| `READ_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur, **Percepteur** (+ Admin bypass) | Lister / consulter les demandes |
+| `READ_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur, **Percepteur** (+ Admin bypass) | Lister / consulter les demandes (API) |
+| `READ_RETRAIT_AGENT` | Percepteur, Caissier, Financier, Admin | Accès menu / objet UI `retraitsagent` (claim distinct) |
 | `VALIDATE_DEMANDE_RETRAIT_AGENT` | Superviseur, Caissier, **Percepteur** (+ Admin bypass) | Valider et générer le jeton |
-| `CONFIRM_RETRAIT_AGENT` | Caissier, Percepteur (+ Admin bypass) | Écran paiement jeton au guichet |
+| `CONFIRM_RETRAIT_AGENT` | Caissier, Percepteur (+ Admin bypass) | Claim UI paiement jeton / `utiliser-jeton` |
+| `MARQUER_PAYER_RETRAIT_AGENT` | Percepteur, Caissier, Financier (+ Admin bypass) | `POST …/marquer-paye` |
 | `OPEN_CAISSIER_SESSION` | Caissier, Percepteur | Ouvrir session avant paiement |
 | `CLOSE_CAISSIER_SESSION` | Caissier, Percepteur | Clôturer la session de caisse |
 | `READ_CAISSIER_SESSION` | Caissier, Percepteur | Consulter session courante / solde |
 
 Les endpoints `retraitagent/*` exigent un JWT valide **et** la permission dédiée (create / read / validate). Admin et SuperAdmin bypassent `HasPermission`.
 
-Les routes paiement (`utiliser-jeton`, `marquer-paye`) exigent le rôle JWT : `Admin`, `Caissier`, `Financier` ou `Percepteur` (claim UI `CONFIRM_RETRAIT_AGENT` pour Caissier/Percepteur).
+Les routes paiement : `utiliser-jeton` exige le rôle JWT `Admin`, `Caissier`, `Financier` ou `Percepteur` ; `marquer-paye` exige la permission `MARQUER_PAYER_RETRAIT_AGENT` (Percepteur, Caissier, Financier ; Admin bypass). Claim UI historique : `CONFIRM_RETRAIT_AGENT`.
 
 > **Ne pas confondre** avec la perception des collectes compte virtuel : `POST /api/PerceptionVirtuelle/confirmer` (voir [`PROCESSUS_PERCEPTION_VIRTUELLE.md`](PROCESSUS_PERCEPTION_VIRTUELLE.md)).
 
@@ -181,7 +183,8 @@ Base : `/api/retraitagent/*` — JWT requis.
 | POST | `/api/retraitagent/verifier-periode` | Body : date ISO `"2026-03-16"` |
 | POST | `/api/retraitagent/verifier-solde` | Body : `{ agentId, montantDemande }` |
 | POST | `/api/retraitagent` | Création demande |
-| GET | `/api/retraitagent/by-agent/{agentId}` | Historique agent |
+| GET | `/api/retraitagent/by-agent/{agentId}` | Historique agent (liste) |
+| GET | `/api/retraitagent/by-agent/{agentId}?statutDemande=EN_ATTENTE` | Historique agent filtré (`EN_ATTENTE` \| `VALIDEE` \| `TRAITEE` \| `REJETEE`) |
 
 ### Exemple `periode-courante`
 
@@ -260,10 +263,11 @@ sequenceDiagram
 
 | Méthode | Route | Usage |
 |---|---|---|
-| GET | `/api/retraitagent/en-attente` | Liste demandes `EN_ATTENTE` |
-| GET | `/api/retraitagent/validees` | Suivi post-validation |
-| GET | `/api/retraitagent/traitees` | Demandes payées |
+| GET | `/api/retraitagent/en-attente` | Liste demandes `EN_ATTENTE` (non paginée) |
+| GET | `/api/retraitagent/validees` | Suivi post-validation (non paginée) |
+| GET | `/api/retraitagent/traitees` | Demandes payées (non paginée) |
 | GET | `/api/retraitagent?page=1&pageSize=20` | Liste paginée complète |
+| GET | `/api/retraitagent?statutDemande=EN_ATTENTE&page=1&pageSize=20` | Liste paginée filtrée (`EN_ATTENTE` \| `VALIDEE` \| `TRAITEE` \| `REJETEE`) |
 | POST | `/api/retraitagent/valider-et-generer-jeton` | Validation + émission jeton |
 | PUT | `/api/retraitagent/{id}` | Rejet manuel (`statutDemande: REJETEE`) |
 
@@ -315,7 +319,7 @@ sequenceDiagram
 | Méthode | Route | Auth |
 |---|---|---|
 | POST | `/api/retraitagent/utiliser-jeton` | Rôles `Admin`, `Caissier`, `Financier`, `Percepteur` |
-| POST | `/api/retraitagent/marquer-paye` | Alias identique |
+| POST | `/api/retraitagent/marquer-paye` | Alias paiement — permission `MARQUER_PAYER_RETRAIT_AGENT` |
 
 ### Body `JetonRetraitUtilisationDto`
 
@@ -644,8 +648,10 @@ export function createRetraitAgentApi(client: AxiosInstance) {
     creerDemande: (dto: DemandeRetraitAgentCreateDto) =>
       client.post<RetraitWorkflowResultDto>('/api/retraitagent', dto),
 
-    getHistoriqueAgent: (agentId: number) =>
-      client.get<DemandeRetraitAgentReadDto[]>(`/api/retraitagent/by-agent/${agentId}`),
+    getHistoriqueAgent: (agentId: number, statutDemande?: string) =>
+      client.get<DemandeRetraitAgentReadDto[]>(`/api/retraitagent/by-agent/${agentId}`, {
+        params: statutDemande ? { statutDemande } : undefined,
+      }),
 
     // Validateur
     getEnAttente: () =>
@@ -654,9 +660,9 @@ export function createRetraitAgentApi(client: AxiosInstance) {
     getValidees: () =>
       client.get<DemandeRetraitAgentReadDto[]>('/api/retraitagent/validees'),
 
-    getPaginated: (page = 1, pageSize = 20) =>
+    getPaginated: (page = 1, pageSize = 20, statutDemande?: string) =>
       client.get<PaginatedResponse<DemandeRetraitAgentReadDto>>('/api/retraitagent', {
-        params: { page, pageSize },
+        params: { page, pageSize, ...(statutDemande ? { statutDemande } : {}) },
       }),
 
     validerEtGenererJeton: (dto: DemandeRetraitAgentValidationDto) =>

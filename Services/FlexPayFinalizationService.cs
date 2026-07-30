@@ -76,12 +76,19 @@ namespace ProsocAPI.Services
                 if (existing != null)
                 {
                     var affilie = await _db.Affilies.AsNoTracking()
+                        .Include(a => a.PersonneContact)
                         .FirstAsync(a => a.IdAffilie == existing.AffilieId, ct);
                     return new AdhesionWithAffilieReadDto
                     {
                         Id = existing.IdAdhesion,
                         AffilieId = existing.AffilieId,
-                        CodeAdhesion = affilie.CodeAdhesion ?? string.Empty
+                        CodeAdhesion = affilie.CodeAdhesion ?? string.Empty,
+                        CommuneActivite = affilie.CommuneActivite,
+                        QuartierActivite = affilie.QuartierActivite,
+                        AvenueActivite = affilie.AvenueActivite,
+                        NumeroActivite = affilie.NumeroActivite,
+                        PersonneContact = AffilieDtoMapper.MapPersonneContact(affilie.PersonneContact),
+                        Affilie = AffilieDtoMapper.ToReadDto(affilie)
                     };
                 }
             }

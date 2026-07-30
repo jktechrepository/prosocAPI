@@ -1107,6 +1107,71 @@ public class AdhesionWithAffilieIntegrationTests : IClassFixture<CustomWebApplic
     }
 
     [Fact]
+    public async Task GetById_ReturnsAdresseActiviteEtPersonneContact()
+    {
+        var (agentId, _) = await CreateAgentWithFundedWalletAsync();
+        int prestationId;
+        int fraisId;
+        int deviseId;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ProsocDbContext>();
+            (prestationId, fraisId, deviseId) = await SeedFraisEtPrestationUsdAsync(db);
+        }
+
+        var input = new AdhesionWithAffilieCreateDto
+        {
+            Nom = "Activite",
+            Prenom = "Contact",
+            DateNaissance = new DateTime(1988, 4, 12),
+            Telephone = $"099908{Math.Abs(Guid.NewGuid().GetHashCode()) % 10_000:D4}",
+            ProvinceResidence = "Kinshasa",
+            CommuneResidence = "Lingwala",
+            QuartierResidence = "Centre",
+            CommuneActivite = "Gombe",
+            QuartierActivite = "Commerce",
+            AvenueActivite = "Boulevard 30 Juin",
+            NumeroActivite = "45B",
+            AffilieStatut = true,
+            StatutDossier = "EN ATTENTE",
+            TypeAdhesionId = 1,
+            AgentId = agentId,
+            AdhesionStatut = true,
+            PersonneContact = new PersonneContactCreateDto
+            {
+                NomComplet = "Paul Contact",
+                LienParente = "FRERE",
+                Adresse = "Kinshasa, Gombe 45B"
+            },
+            Collectes = new List<CollecteAvecSouscriptionDto>
+            {
+                FraisVirtualAccountCollecte(fraisId, deviseId, 1.5m),
+                SouscriptionVirtualAccountCollecte(prestationId, deviseId, 10m)
+            }
+        };
+
+        var createRes = await PostWithAffilieAsVirtualAccountCallerAsync(input);
+        createRes.EnsureSuccessStatusCode();
+        var created = await createRes.Content.ReadFromJsonAsync<AdhesionWithAffilieReadDto>();
+        Assert.NotNull(created);
+
+        var getRes = await _client.GetAsync($"/api/Adhesion/{created!.Id}");
+        getRes.EnsureSuccessStatusCode();
+        var adhesion = await getRes.Content.ReadFromJsonAsync<AdhesionWithAffilieReadDto>();
+
+        Assert.NotNull(adhesion);
+        Assert.Equal("Gombe", adhesion!.CommuneActivite);
+        Assert.Equal("Commerce", adhesion.QuartierActivite);
+        Assert.Equal("Boulevard 30 Juin", adhesion.AvenueActivite);
+        Assert.Equal("45B", adhesion.NumeroActivite);
+        Assert.NotNull(adhesion.PersonneContact);
+        Assert.Equal("Paul Contact", adhesion.PersonneContact!.NomComplet);
+        Assert.Equal("FRERE", adhesion.PersonneContact.LienParente);
+        Assert.Equal(created.AffilieId, adhesion.PersonneContact.AffilieId);
+    }
+
+    [Fact]
     public async Task Niveau2Encodeur_ValiderSansAdresseActivite_Retourne400()
     {
         TestAuthHandler.Roles = new[] { "Admin", "SuperAdmin" };

@@ -834,6 +834,173 @@ public class RetraitAgentControllerIntegrationTests : IClassFixture<CustomWebApp
     }
 
     [Fact]
+    public async Task GetAll_FiltreStatutDemandeEnAttente_RetourneUniquementEnAttente()
+    {
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ProsocDbContext>();
+
+            var agent = new Agent
+            {
+                NomComplet = "Agent Filtre Statut",
+                Matricule = $"MAT-FS-{Guid.NewGuid():N}"[..11],
+                Phone = $"099{Random.Shared.Next(1000000, 9999999)}",
+                ZoneSocialeId = 1,
+                Statut = true,
+                DateCreation = DateTime.Now
+            };
+            db.Agents.Add(agent);
+            await db.SaveChangesAsync();
+
+            db.DemandesRetraitAgents.AddRange(
+                new DemandeRetraitAgent
+                {
+                    AgentId = agent.IdAgent,
+                    MontantDemande = 111,
+                    TypeRetrait = "PARTIEL",
+                    StatutDemande = "EN_ATTENTE",
+                    MotifRetrait = "Filtre EN_ATTENTE",
+                    DateDemande = DateTime.Now
+                },
+                new DemandeRetraitAgent
+                {
+                    AgentId = agent.IdAgent,
+                    MontantDemande = 222,
+                    TypeRetrait = "PARTIEL",
+                    StatutDemande = "VALIDEE",
+                    MotifRetrait = "Filtre VALIDEE",
+                    DateDemande = DateTime.Now
+                });
+            await db.SaveChangesAsync();
+        }
+
+        TestAuthHandler.Roles = new[] { "Admin" };
+        TestAuthHandler.Permissions = new[] { "READ_DEMANDE_RETRAIT_AGENT" };
+
+        var response = await _client.GetAsync("/api/retraitagent?statutDemande=EN_ATTENTE&pageSize=100");
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<PaginatedResponse<DemandeRetraitAgentReadDto>>();
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.Data);
+        Assert.All(result.Data, d => Assert.Equal("EN_ATTENTE", d.StatutDemande));
+        Assert.Contains(result.Data, d => d.MontantDemande == 111);
+        Assert.DoesNotContain(result.Data, d => d.MontantDemande == 222);
+    }
+
+    [Fact]
+    public async Task GetAll_FiltreStatutDemandeInvalide_RetourneBadRequest()
+    {
+        TestAuthHandler.Roles = new[] { "Admin" };
+        TestAuthHandler.Permissions = new[] { "READ_DEMANDE_RETRAIT_AGENT" };
+
+        var response = await _client.GetAsync("/api/retraitagent?statutDemande=INCONNU");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("statutDemande", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetByAgent_FiltreStatutDemandeEnAttente_RetourneUniquementEnAttente()
+    {
+        int agentId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ProsocDbContext>();
+
+            var agent = new Agent
+            {
+                NomComplet = "Agent ByAgent Filtre",
+                Matricule = $"MAT-BA-{Guid.NewGuid():N}"[..11],
+                Phone = $"098{Random.Shared.Next(1000000, 9999999)}",
+                ZoneSocialeId = 1,
+                Statut = true,
+                DateCreation = DateTime.Now
+            };
+            db.Agents.Add(agent);
+            await db.SaveChangesAsync();
+            agentId = agent.IdAgent;
+
+            db.DemandesRetraitAgents.AddRange(
+                new DemandeRetraitAgent
+                {
+                    AgentId = agentId,
+                    MontantDemande = 333,
+                    TypeRetrait = "PARTIEL",
+                    StatutDemande = "EN_ATTENTE",
+                    MotifRetrait = "ByAgent EN_ATTENTE",
+                    DateDemande = DateTime.Now
+                },
+                new DemandeRetraitAgent
+                {
+                    AgentId = agentId,
+                    MontantDemande = 444,
+                    TypeRetrait = "PARTIEL",
+                    StatutDemande = "VALIDEE",
+                    MotifRetrait = "ByAgent VALIDEE",
+                    DateDemande = DateTime.Now
+                });
+            await db.SaveChangesAsync();
+        }
+
+        TestAuthHandler.Roles = new[] { "Admin" };
+        TestAuthHandler.Permissions = new[] { "READ_DEMANDE_RETRAIT_AGENT" };
+
+        var response = await _client.GetAsync($"/api/retraitagent/by-agent/{agentId}?statutDemande=EN_ATTENTE");
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<List<DemandeRetraitAgentReadDto>>();
+
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal("EN_ATTENTE", result[0].StatutDemande);
+        Assert.Equal(333, result[0].MontantDemande);
+    }
+
+    [Fact]
+    public async Task GetByAgent_FiltreStatutDemandeInvalide_RetourneBadRequest()
+    {
+        TestAuthHandler.Roles = new[] { "Admin" };
+        TestAuthHandler.Permissions = new[] { "READ_DEMANDE_RETRAIT_AGENT" };
+
+        var response = await _client.GetAsync("/api/retraitagent/by-agent/1?statutDemande=INCONNU");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("statutDemande", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task MarquerPaye_WithoutPermission_ReturnsForbidden()
+    {
+        var previousRoles = TestAuthHandler.Roles;
+        var previousPermissions = TestAuthHandler.Permissions;
+        try
+        {
+            TestAuthHandler.Roles = new[] { "Agent (AT)" };
+            TestAuthHandler.Permissions = Array.Empty<string>();
+
+            var response = await _client.PostAsJsonAsync(
+                "/api/RetraitAgent/marquer-paye",
+                new JetonRetraitUtilisationDto
+                {
+                    CodeJeton = "JETON-FAKE",
+                    AgentId = 1,
+                    IdJeton = 0
+                });
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.Contains("MARQUER_PAYER_RETRAIT_AGENT", body, StringComparison.Ordinal);
+        }
+        finally
+        {
+            TestAuthHandler.Roles = previousRoles;
+            TestAuthHandler.Permissions = previousPermissions;
+        }
+    }
+
+    [Fact]
     public async Task GetById_DemandeExistante_RetourneDemande()
     {
         // Arrange

@@ -33,6 +33,24 @@ namespace ProsocAPI.Models.Core
         public static bool EstValide(string? statutDossier) =>
             Normaliser(statutDossier) == Valide;
 
+        /// <summary>
+        /// Parse strict pour filtre API : valeurs reconnues → canon ;
+        /// vide → <c>null</c> (pas de filtre) ; inconnu → <c>null</c> (à traiter en 400).
+        /// Ne mappe pas l'inconnu vers <see cref="EnAttente"/> (contrairement à <see cref="Normaliser"/>).
+        /// </summary>
+        public static string? EssayerParserFiltre(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return null;
+
+            return CleComparaison(raw) switch
+            {
+                "ENATTENTE" or "A" or "B" => EnAttente,
+                "VALIDE" or "COMPLET" => Valide,
+                _ => null
+            };
+        }
+
         /// <summary>Clé upper, sans accents, espaces retirés.</summary>
         public static string CleComparaison(string? statutDossier)
         {

@@ -85,9 +85,190 @@ public class AdhesionControllerPaginationIntegrationTests : IClassFixture<Custom
         Assert.Contains(payload!.Data, a => a.Id == adhesionId);
     }
 
+    [Fact]
+    public async Task GetAll_FiltreStatutDossierEnAttente_RetourneUniquementEnAttente()
+    {
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        int idEnAttente;
+        int idValide;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ProsocDbContext>();
+            var typeAdhesionId = await db.TypeAdhesions.Select(t => t.IdTypeAdhesion).FirstAsync();
+            var utilisateurId = await db.Utilisateurs.Select(u => u.IdUtilisateur).FirstAsync();
+
+            var affilieAttente = new Affilie
+            {
+                CodeAdhesion = $"ATT-{suffix}",
+                Nom = "Filtre",
+                Prenom = "Attente",
+                NomComplet = $"Filtre Attente {suffix}",
+                DateNaissance = new DateTime(1990, 1, 1),
+                Telephone = "0820000011",
+                Statut = true,
+                DateCreation = DateTime.UtcNow
+            };
+            var affilieValide = new Affilie
+            {
+                CodeAdhesion = $"VAL-{suffix}",
+                Nom = "Filtre",
+                Prenom = "Valide",
+                NomComplet = $"Filtre Valide {suffix}",
+                DateNaissance = new DateTime(1991, 2, 2),
+                Telephone = "0820000012",
+                Statut = true,
+                DateCreation = DateTime.UtcNow
+            };
+            db.Affilies.AddRange(affilieAttente, affilieValide);
+            await db.SaveChangesAsync();
+
+            var adhesionAttente = new Adhesion
+            {
+                AffilieId = affilieAttente.IdAffilie,
+                TypeAdhesionId = typeAdhesionId,
+                UtilisateurId = utilisateurId,
+                StatutDossier = AdhesionStatutDossierRegles.EnAttente,
+                Statut = true,
+                DateCreation = DateTime.UtcNow
+            };
+            var adhesionValide = new Adhesion
+            {
+                AffilieId = affilieValide.IdAffilie,
+                TypeAdhesionId = typeAdhesionId,
+                UtilisateurId = utilisateurId,
+                StatutDossier = AdhesionStatutDossierRegles.Valide,
+                Statut = true,
+                DateCreation = DateTime.UtcNow
+            };
+            db.Adhesions.AddRange(adhesionAttente, adhesionValide);
+            await db.SaveChangesAsync();
+            idEnAttente = adhesionAttente.IdAdhesion;
+            idValide = adhesionValide.IdAdhesion;
+        }
+
+        TestAuthHandler.Roles = new[] { "Admin" };
+        TestAuthHandler.Permissions = new[] { "READ_ADHESION" };
+
+        var response = await _client.GetAsync(
+            $"/api/Adhesion?statutDossier=EN%20ATTENTE&search={suffix}&page=1&pageSize=50");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payload = await response.Content.ReadFromJsonAsync<PaginatedResponse<AdhesionListItemForStatutTest>>();
+        Assert.NotNull(payload);
+        Assert.Contains(payload!.Data, a => a.Id == idEnAttente);
+        Assert.DoesNotContain(payload.Data, a => a.Id == idValide);
+        Assert.All(payload.Data, a => Assert.Equal(AdhesionStatutDossierRegles.EnAttente, a.StatutDossier));
+    }
+
+    [Fact]
+    public async Task GetAll_FiltreStatutDossierInvalide_RetourneBadRequest()
+    {
+        TestAuthHandler.Roles = new[] { "Admin" };
+        TestAuthHandler.Permissions = new[] { "READ_ADHESION" };
+
+        var response = await _client.GetAsync("/api/Adhesion?statutDossier=INCONNU");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("statutDossier", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetAll_AsAgentAa_ForceFiltreEnAttente_IgnoreStatutDossierValide()
+    {
+        var previousRoles = TestAuthHandler.Roles;
+        var previousPermissions = TestAuthHandler.Permissions;
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        int idEnAttente;
+        int idValide;
+
+        try
+        {
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<ProsocDbContext>();
+                var typeAdhesionId = await db.TypeAdhesions.Select(t => t.IdTypeAdhesion).FirstAsync();
+                var utilisateurId = await db.Utilisateurs.Select(u => u.IdUtilisateur).FirstAsync();
+
+                var affilieAttente = new Affilie
+                {
+                    CodeAdhesion = $"AA-A-{suffix}",
+                    Nom = "AaScope",
+                    Prenom = "Attente",
+                    NomComplet = $"AaScope Attente {suffix}",
+                    DateNaissance = new DateTime(1992, 3, 3),
+                    Telephone = "0820000021",
+                    Statut = true,
+                    DateCreation = DateTime.UtcNow
+                };
+                var affilieValide = new Affilie
+                {
+                    CodeAdhesion = $"AA-V-{suffix}",
+                    Nom = "AaScope",
+                    Prenom = "Valide",
+                    NomComplet = $"AaScope Valide {suffix}",
+                    DateNaissance = new DateTime(1993, 4, 4),
+                    Telephone = "0820000022",
+                    Statut = true,
+                    DateCreation = DateTime.UtcNow
+                };
+                db.Affilies.AddRange(affilieAttente, affilieValide);
+                await db.SaveChangesAsync();
+
+                var adhesionAttente = new Adhesion
+                {
+                    AffilieId = affilieAttente.IdAffilie,
+                    TypeAdhesionId = typeAdhesionId,
+                    UtilisateurId = utilisateurId,
+                    StatutDossier = AdhesionStatutDossierRegles.EnAttente,
+                    Statut = true,
+                    DateCreation = DateTime.UtcNow
+                };
+                var adhesionValide = new Adhesion
+                {
+                    AffilieId = affilieValide.IdAffilie,
+                    TypeAdhesionId = typeAdhesionId,
+                    UtilisateurId = utilisateurId,
+                    StatutDossier = AdhesionStatutDossierRegles.Valide,
+                    Statut = true,
+                    DateCreation = DateTime.UtcNow
+                };
+                db.Adhesions.AddRange(adhesionAttente, adhesionValide);
+                await db.SaveChangesAsync();
+                idEnAttente = adhesionAttente.IdAdhesion;
+                idValide = adhesionValide.IdAdhesion;
+            }
+
+            TestAuthHandler.Roles = new[] { "Agent (AA)" };
+            TestAuthHandler.Permissions = new[] { "READ_ADHESION" };
+
+            var response = await _client.GetAsync(
+                $"/api/Adhesion?statutDossier=VALID%C3%89&search={suffix}&page=1&pageSize=50");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            var payload = await response.Content.ReadFromJsonAsync<PaginatedResponse<AdhesionListItemForStatutTest>>();
+            Assert.NotNull(payload);
+            Assert.Contains(payload!.Data, a => a.Id == idEnAttente);
+            Assert.DoesNotContain(payload.Data, a => a.Id == idValide);
+            Assert.All(payload.Data, a => Assert.Equal(AdhesionStatutDossierRegles.EnAttente, a.StatutDossier));
+        }
+        finally
+        {
+            TestAuthHandler.Roles = previousRoles;
+            TestAuthHandler.Permissions = previousPermissions;
+        }
+    }
+
     private sealed class AdhesionListItemForSearchTest
     {
         public int Id { get; set; }
+    }
+
+    private sealed class AdhesionListItemForStatutTest
+    {
+        public int Id { get; set; }
+        public string StatutDossier { get; set; } = string.Empty;
     }
 }
 

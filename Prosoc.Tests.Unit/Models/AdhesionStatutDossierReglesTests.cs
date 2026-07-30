@@ -40,4 +40,35 @@ public class AdhesionStatutDossierReglesTests
         Assert.True(AdhesionStatutDossierRegles.EstValide("VALIDÉ"));
         Assert.False(AdhesionStatutDossierRegles.EstValide("EN ATTENTE"));
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public void EssayerParserFiltre_Vide_RetourneNull(string? input)
+    {
+        Assert.Null(AdhesionStatutDossierRegles.EssayerParserFiltre(input));
+    }
+
+    [Theory]
+    [InlineData("EN ATTENTE", AdhesionStatutDossierRegles.EnAttente)]
+    [InlineData("en attente", AdhesionStatutDossierRegles.EnAttente)]
+    [InlineData("A", AdhesionStatutDossierRegles.EnAttente)]
+    [InlineData("B", AdhesionStatutDossierRegles.EnAttente)]
+    [InlineData("VALIDÉ", AdhesionStatutDossierRegles.Valide)]
+    [InlineData("VALIDE", AdhesionStatutDossierRegles.Valide)]
+    [InlineData("COMPLET", AdhesionStatutDossierRegles.Valide)]
+    public void EssayerParserFiltre_Valide_RetourneCanon(string input, string expected)
+    {
+        Assert.Equal(expected, AdhesionStatutDossierRegles.EssayerParserFiltre(input));
+    }
+
+    [Theory]
+    [InlineData("INCONNU")]
+    [InlineData("TRAITEE")]
+    [InlineData("REJETEE")]
+    public void EssayerParserFiltre_Invalide_RetourneNull(string input)
+    {
+        Assert.Null(AdhesionStatutDossierRegles.EssayerParserFiltre(input));
+    }
 }

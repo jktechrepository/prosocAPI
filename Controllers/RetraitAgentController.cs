@@ -70,20 +70,38 @@ namespace ProsocAPI.Controllers
         }
 
         /// <summary>
-        /// Récupère toutes les demandes de retrait
+        /// Récupère toutes les demandes de retrait (paginé).
+        /// Filtre optionnel : <c>statutDemande</c> = EN_ATTENTE | VALIDEE | TRAITEE | REJETEE.
         /// </summary>
         [HttpGet]
         public async Task<ActionResult<PaginatedResponse<DemandeRetraitAgentReadDto>>> GetAll(
-            [FromQuery] PaginationRequest request)
+            [FromQuery] PaginationRequest request,
+            [FromQuery] string? statutDemande = null)
         {
             if (!HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
                 return ForbiddenPermission("READ_DEMANDE_RETRAIT_AGENT");
 
             try
             {
+                string? statutNormalise = null;
+                if (!string.IsNullOrWhiteSpace(statutDemande))
+                {
+                    statutNormalise = NormaliserStatutDemande(statutDemande);
+                    if (statutNormalise == null)
+                    {
+                        return BadRequest(new
+                        {
+                            message = "statutDemande invalide. Valeurs acceptées : EN_ATTENTE, VALIDEE, TRAITEE, REJETEE."
+                        });
+                    }
+                }
+
                 var query = _db.DemandesRetraitAgents
                     .Include(d => d.Agent)
                     .AsQueryable();
+
+                if (statutNormalise != null)
+                    query = query.Where(d => d.StatutDemande == statutNormalise);
 
                 var result = await _paginationService.CreatePaginatedResponseAsync(query, request);
 
@@ -109,6 +127,22 @@ namespace ProsocAPI.Controllers
                     "Une erreur technique est survenue lors de la récupération des demandes de retrait paginées",
                     ex);
             }
+        }
+
+        /// <summary>
+        /// Normalise un statut de demande (casse / tirets / alias FR) vers la valeur canonique DB.
+        /// </summary>
+        private static string? NormaliserStatutDemande(string raw)
+        {
+            var key = raw.Trim().ToUpperInvariant().Replace('-', '_');
+            return key switch
+            {
+                "EN_ATTENTE" => "EN_ATTENTE",
+                "VALIDEE" or "VALIDEES" => "VALIDEE",
+                "TRAITEE" or "TRAITEES" => "TRAITEE",
+                "REJETEE" or "REJETEES" => "REJETEE",
+                _ => null
+            };
         }
 
         /// <summary>
@@ -141,17 +175,37 @@ namespace ProsocAPI.Controllers
         }
 
         /// <summary>
-        /// Récupère les demandes de retrait d'un agent
+        /// Récupère les demandes de retrait d'un agent.
+        /// Filtre optionnel : <c>statutDemande</c> = EN_ATTENTE | VALIDEE | TRAITEE | REJETEE.
         /// </summary>
         [HttpGet("by-agent/{agentId}")]
-        public async Task<ActionResult<List<DemandeRetraitAgentReadDto>>> GetByAgent(int agentId, CancellationToken ct = default)
+        public async Task<ActionResult<List<DemandeRetraitAgentReadDto>>> GetByAgent(
+            int agentId,
+            [FromQuery] string? statutDemande = null,
+            CancellationToken ct = default)
         {
             if (!HasPermission("READ_DEMANDE_RETRAIT_AGENT"))
                 return ForbiddenPermission("READ_DEMANDE_RETRAIT_AGENT");
 
             try
             {
+                string? statutNormalise = null;
+                if (!string.IsNullOrWhiteSpace(statutDemande))
+                {
+                    statutNormalise = NormaliserStatutDemande(statutDemande);
+                    if (statutNormalise == null)
+                    {
+                        return BadRequest(new
+                        {
+                            message = "statutDemande invalide. Valeurs acceptées : EN_ATTENTE, VALIDEE, TRAITEE, REJETEE."
+                        });
+                    }
+                }
+
                 var demandes = await _retraitAgentRepository.GetByAgentIdAsync(agentId, ct);
+                if (statutNormalise != null)
+                    demandes = demandes.Where(d => d.StatutDemande == statutNormalise).ToList();
+
                 var devisePrincipale = await _deviseConversionService.GetDevisePrincipaleAsync(ct);
                 var dtos = demandes.Select(d => MapToReadDto(d, devisePrincipale)).ToList();
 
@@ -336,13 +390,16 @@ namespace ProsocAPI.Controllers
 
         /// <summary>
         /// Alias métier : marquer une demande de retrait comme payée via le jeton.
+        /// Permission : <c>MARQUER_PAYER_RETRAIT_AGENT</c> (Percepteur, Caissier, Financier ; Admin bypass).
         /// </summary>
         [HttpPost("marquer-paye")]
-        [Authorize(Roles = "Admin,Caissier,Financier,Percepteur")]
         public async Task<ActionResult<RetraitPaiementResultDto>> MarquerPaye(
             [FromBody] JetonRetraitUtilisationDto utilisationDto,
             CancellationToken ct = default)
         {
+            if (!HasPermission("MARQUER_PAYER_RETRAIT_AGENT"))
+                return ForbiddenPermission("MARQUER_PAYER_RETRAIT_AGENT");
+
             return await ExecuterPaiementRetraitAsync(utilisationDto, ct);
         }
 

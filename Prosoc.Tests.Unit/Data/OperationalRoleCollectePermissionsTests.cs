@@ -290,6 +290,8 @@ public class OperationalRoleCollectePermissionsTests
         Assert.Contains("READ_DEMANDE_RETRAIT_AGENT", permissions);
         Assert.Contains("VALIDATE_DEMANDE_RETRAIT_AGENT", permissions);
         Assert.Contains("CONFIRM_RETRAIT_AGENT", permissions);
+        Assert.Contains("MARQUER_PAYER_RETRAIT_AGENT", permissions);
+        Assert.Contains("READ_RETRAIT_AGENT", permissions);
     }
 
     [Fact]
@@ -299,7 +301,17 @@ public class OperationalRoleCollectePermissionsTests
         Assert.Contains("READ_DEMANDE_RETRAIT_AGENT", permissions);
         Assert.Contains("VALIDATE_DEMANDE_RETRAIT_AGENT", permissions);
         Assert.Contains("CONFIRM_RETRAIT_AGENT", permissions);
+        Assert.Contains("MARQUER_PAYER_RETRAIT_AGENT", permissions);
+        Assert.Contains("READ_RETRAIT_AGENT", permissions);
         Assert.DoesNotContain("CREATE_DEMANDE_RETRAIT_AGENT", permissions);
+    }
+
+    [Fact]
+    public void FinancierRole_IncludesMarquerPayerRetraitAgent()
+    {
+        var permissions = InvokePermissionWhitelist("GetFinancierRolePermissionNames");
+        Assert.Contains("MARQUER_PAYER_RETRAIT_AGENT", permissions);
+        Assert.Contains("READ_RETRAIT_AGENT", permissions);
     }
 
     [Fact]

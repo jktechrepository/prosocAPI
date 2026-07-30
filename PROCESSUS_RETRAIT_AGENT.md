@@ -17,7 +17,7 @@ Documents connexes :
 | 1 | Agent (ou Caissier) | Consulte la période autorisée et le solde |
 | 2 | Agent (ou Caissier) | Crée une **demande de retrait** (PARTIEL ou TOTAL selon la fenêtre) — permission `CREATE_DEMANDE_RETRAIT_AGENT` |
 | 3 | Admin / Superviseur / Caissier / **Percepteur** | **Valide** la demande et génère un **jeton** — permission `VALIDATE_DEMANDE_RETRAIT_AGENT` |
-| 4 | Caissier / Percepteur | **Utilise le jeton** → débit wallet agent + sortie caisse — permission `CONFIRM_RETRAIT_AGENT` |
+| 4 | Caissier / Percepteur / Financier | **Marque payé / utilise le jeton** → débit wallet agent + sortie caisse — `MARQUER_PAYER_RETRAIT_AGENT` (`marquer-paye`) ; `CONFIRM_RETRAIT_AGENT` (claim UI / `utiliser-jeton` par rôle) |
 | 5 | Admin / IT | Ajuste les **paramètres métier** (fenêtres, montant minimum) via l'API dédiée |
 
 Les montants sont exprimés en **devise principale** du système (USD en configuration actuelle).
@@ -138,7 +138,8 @@ sequenceDiagram
 | `CREATE_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur |
 | `READ_DEMANDE_RETRAIT_AGENT` | Agent (AT), Caissier, Superviseur, **Percepteur** |
 | `VALIDATE_DEMANDE_RETRAIT_AGENT` | Superviseur, Caissier, **Percepteur** (+ Admin bypass) |
-| `CONFIRM_RETRAIT_AGENT` | Caissier, Percepteur (paiement jeton ; distinct de la validation) |
+| `CONFIRM_RETRAIT_AGENT` | Caissier, Percepteur (paiement jeton / claim UI ; distinct de la validation) |
+| `MARQUER_PAYER_RETRAIT_AGENT` | Percepteur, Caissier, Financier (`POST /api/RetraitAgent/marquer-paye`) |
 
 Prod demande Caissier/AT/Superviseur : `sql/MigrateCaissierDemandeRetraitAgentPermissions.idempotent.sql`.  
 Prod lecture Percepteur : `sql/MigratePercepteurReadDemandeRetraitAgent.idempotent.sql`.  
@@ -181,7 +182,7 @@ Même logique qu’un `POST utiliser-jeton` sur jeton expiré (`JETON_EXPIRE`). 
 - Exige une **session caisse ouverte** (sauf mode test).
 - Débite le wallet agent, enregistre un **mouvement caisse** sortie.
 - Rôles autorisés : `Admin`, `Caissier`, `Financier`, `Percepteur`.
-- Permissions JWT associées (menu UI) : `CONFIRM_RETRAIT_AGENT`, `OPEN_CAISSIER_SESSION`, `READ_CAISSIER_SESSION`.
+- Permissions JWT associées (menu UI) : `CONFIRM_RETRAIT_AGENT`, `MARQUER_PAYER_RETRAIT_AGENT`, `OPEN_CAISSIER_SESSION`, `READ_CAISSIER_SESSION`.
 - Marque le jeton comme utilisé.
 
 #### Ouverture de session avant paiement (obligatoire en prod)

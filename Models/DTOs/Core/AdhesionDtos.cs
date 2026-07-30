@@ -28,6 +28,10 @@ namespace ProsocAPI.Models.DTOs.Core
         public bool Statut { get; set; }
         public int AffilieId { get; set; }
         public string CodeAdhesion { get; set; } = string.Empty;
+        public string? CommuneActivite { get; set; }
+        public string? QuartierActivite { get; set; }
+        public string? AvenueActivite { get; set; }
+        public string? NumeroActivite { get; set; }
         public AffilieReadDto Affilie { get; set; } = new();
         public List<SouscriptionPrestationReadDto> Souscriptions { get; set; } = new();
         public List<CollecteReadDto> Collectes { get; set; } = new();

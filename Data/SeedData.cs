@@ -380,6 +380,8 @@ namespace Prosoc.Data
                         new Permission { Nom = "READ_DEMANDE_RETRAIT_AGENT", Description = "Consulter les demandes de retrait agent", DateCreation = DateTime.Now },
                         new Permission { Nom = "VALIDATE_DEMANDE_RETRAIT_AGENT", Description = "Valider une demande de retrait agent et générer le jeton", DateCreation = DateTime.Now },
                         new Permission { Nom = "CONFIRM_RETRAIT_AGENT", Description = "Payer un retrait agent au guichet", DateCreation = DateTime.Now },
+                        new Permission { Nom = "MARQUER_PAYER_RETRAIT_AGENT", Description = "Marquer un retrait agent comme payé (jeton)", DateCreation = DateTime.Now },
+                        new Permission { Nom = "READ_RETRAIT_AGENT", Description = "Accéder au module / menu retraits agent", DateCreation = DateTime.Now },
                         new Permission { Nom = "CREATE_DEMANDE_RECHARGE_WALLET_VIRTUEL", Description = "Créer une demande de recharge wallet virtuel", DateCreation = DateTime.Now },
                         new Permission { Nom = "READ_DEMANDE_RECHARGE_WALLET_VIRTUEL", Description = "Consulter les demandes de recharge wallet virtuel", DateCreation = DateTime.Now },
                         new Permission { Nom = "CONFIRM_DEMANDE_RECHARGE_WALLET_VIRTUEL", Description = "Confirmer ou rejeter une demande de recharge wallet virtuel", DateCreation = DateTime.Now },
@@ -2450,6 +2452,9 @@ namespace Prosoc.Data
             // Perception compte virtuel (consultation / réconciliation)
             "READ_PERCEPTION_VIRTUAL",
             "CONFIRM_PERCEPTION_VIRTUAL",
+            // Retrait agent — marquer payé (jeton) + menu module
+            "MARQUER_PAYER_RETRAIT_AGENT",
+            "READ_RETRAIT_AGENT",
             // Notifications
             "READ_NOTIFICATION"
         };
@@ -2583,7 +2588,9 @@ namespace Prosoc.Data
             "READ_CAISSIER_SESSION",
             "READ_DEMANDE_RETRAIT_AGENT",
             "VALIDATE_DEMANDE_RETRAIT_AGENT",
-            "CONFIRM_RETRAIT_AGENT"
+            "CONFIRM_RETRAIT_AGENT",
+            "MARQUER_PAYER_RETRAIT_AGENT",
+            "READ_RETRAIT_AGENT"
         };
 
         private static IEnumerable<Permission> FilterPermissionsForPercepteurRole(IEnumerable<Permission> allPermissions)
@@ -2619,6 +2626,8 @@ namespace Prosoc.Data
                 "READ_DEMANDE_RETRAIT_AGENT",
                 "VALIDATE_DEMANDE_RETRAIT_AGENT",
                 "CONFIRM_RETRAIT_AGENT",
+                "MARQUER_PAYER_RETRAIT_AGENT",
+                "READ_RETRAIT_AGENT",
                 // Clôture & rapports
                 "GENERATE_RAPPORT",
                 "EXPORT_DATA",
@@ -2828,7 +2837,9 @@ namespace Prosoc.Data
             {
                 ("CREATE_DEMANDE_RETRAIT_AGENT", "Créer une demande de retrait agent"),
                 ("READ_DEMANDE_RETRAIT_AGENT", "Consulter les demandes de retrait agent"),
-                ("VALIDATE_DEMANDE_RETRAIT_AGENT", "Valider une demande de retrait agent et générer le jeton")
+                ("VALIDATE_DEMANDE_RETRAIT_AGENT", "Valider une demande de retrait agent et générer le jeton"),
+                ("MARQUER_PAYER_RETRAIT_AGENT", "Marquer un retrait agent comme payé (jeton)"),
+                ("READ_RETRAIT_AGENT", "Accéder au module / menu retraits agent")
             };
 
             foreach (var (nom, description) in permissions)

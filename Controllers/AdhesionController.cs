@@ -862,9 +862,15 @@ namespace ProsocAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Liste paginée des adhésions.
+        /// Filtre optionnel : <c>statutDossier</c> = EN ATTENTE | VALIDÉ (alias : VALIDE, COMPLET, A, B).
+        /// Rôle Agent (AA) : filtre forcé à EN ATTENTE (ignore le query param).
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<PaginatedResponse<AdhesionReadDto>>> GetAll(
-            [FromQuery] PaginationRequest request)
+            [FromQuery] PaginationRequest request,
+            [FromQuery] string? statutDossier = null)
         {
             try
             {
@@ -875,10 +881,17 @@ namespace ProsocAPI.Controllers
                 if (!HasPermission("READ_ADHESION"))
                     return ForbiddenPermission("READ_ADHESION");
 
+                var filtreError = ResolveStatutDossierFiltre(statutDossier, out var statutCanon);
+                if (filtreError != null)
+                    return filtreError;
+
                 var query = _db.Adhesions
                     .Include(a => a.Affilie)
                     .Include(a => a.TypeAdhesion)
                     .AsQueryable();
+
+                if (statutCanon != null)
+                    query = query.Where(a => a.StatutDossier == statutCanon);
 
                 query = query.ApplyAdhesionSearch(request.Search);
                 request.Search = null;
@@ -934,6 +947,8 @@ namespace ProsocAPI.Controllers
                 // ✅ AJOUT : Include des antécédents
                 .Include(a => a.Affilie)
                     .ThenInclude(aff => aff.Antecedants)
+                .Include(a => a.Affilie)
+                    .ThenInclude(aff => aff.PersonneContact)
                 .Include(a => a.TypeAdhesion)
                 .Include(a => a.AgentCreateur)
                 .FirstOrDefaultAsync(a => a.IdAdhesion == id, ct);
@@ -952,7 +967,12 @@ namespace ProsocAPI.Controllers
                 TypeAdhesionId = adhesion.TypeAdhesionId,
                 AgentId = adhesion.AgentId,
                 CodeAdhesion = adhesion.Affilie.CodeAdhesion ?? "",
-                
+                CommuneActivite = adhesion.Affilie.CommuneActivite,
+                QuartierActivite = adhesion.Affilie.QuartierActivite,
+                AvenueActivite = adhesion.Affilie.AvenueActivite,
+                NumeroActivite = adhesion.Affilie.NumeroActivite,
+                PersonneContact = AffilieDtoMapper.MapPersonneContact(adhesion.Affilie.PersonneContact),
+
                 Affilie = AffilieDtoMapper.ToReadDto(adhesion.Affilie),
 
                 // Souscriptions
@@ -1547,6 +1567,10 @@ namespace ProsocAPI.Controllers
                         AgentId = created.AgentId,
                         AgentNom = agent?.NomComplet ?? string.Empty,
                         CodeAdhesion = createdAffilie?.CodeAdhesion ?? string.Empty,
+                        CommuneActivite = createdAffilie?.CommuneActivite ?? affilie.CommuneActivite,
+                        QuartierActivite = createdAffilie?.QuartierActivite ?? affilie.QuartierActivite,
+                        AvenueActivite = createdAffilie?.AvenueActivite ?? affilie.AvenueActivite,
+                        NumeroActivite = createdAffilie?.NumeroActivite ?? affilie.NumeroActivite,
                         Affilie = AffilieDtoMapper.ToReadDto(affilie),
                         Collectes = collectesDto,
                         Dependants = dependantsDto, // 🆕 Dépendants réellement créés
@@ -1997,11 +2021,13 @@ namespace ProsocAPI.Controllers
         }
 
         /// <summary>
-        /// Récupère les adhésions paginées
+        /// Récupère les adhésions paginées.
+        /// Rôle Agent (AA) : filtre forcé à EN ATTENTE.
         /// </summary>
         [HttpGet("paginated")]
         public async Task<ActionResult<PaginatedResponse<AdhesionReadDto>>> GetPaginated(
-            [FromQuery] PaginationRequest request)
+            [FromQuery] PaginationRequest request,
+            [FromQuery] string? statutDossier = null)
         {
             try
             {
@@ -2012,10 +2038,17 @@ namespace ProsocAPI.Controllers
                 if (!HasPermission("READ_ADHESION"))
                     return ForbiddenPermission("READ_ADHESION");
 
+                var filtreError = ResolveStatutDossierFiltre(statutDossier, out var statutCanon);
+                if (filtreError != null)
+                    return filtreError;
+
                 var query = _db.Adhesions
                     .Include(a => a.Affilie)
                     .Include(a => a.TypeAdhesion)
                     .AsQueryable();
+
+                if (statutCanon != null)
+                    query = query.Where(a => a.StatutDossier == statutCanon);
 
                 query = query.ApplyAdhesionSearch(request.Search);
                 request.Search = null;
@@ -2131,6 +2164,34 @@ namespace ProsocAPI.Controllers
                     "Une erreur technique est survenue lors de la récupération des adhésions avancées",
                     ex);
             }
+        }
+
+        /// <summary>
+        /// Agent (AA) → toujours EN ATTENTE.
+        /// Autres rôles → parse optionnel de <paramref name="statutDossier"/> (400 si invalide).
+        /// </summary>
+        private ActionResult? ResolveStatutDossierFiltre(string? statutDossier, out string? statutCanon)
+        {
+            if (User.IsInRole(CurrentUserAgentResolver.AgentAaRoleName))
+            {
+                statutCanon = AdhesionStatutDossierRegles.EnAttente;
+                return null;
+            }
+
+            statutCanon = null;
+            if (string.IsNullOrWhiteSpace(statutDossier))
+                return null;
+
+            statutCanon = AdhesionStatutDossierRegles.EssayerParserFiltre(statutDossier);
+            if (statutCanon == null)
+            {
+                return BadRequest(new
+                {
+                    message = "statutDossier invalide. Valeurs acceptées : EN ATTENTE, VALIDÉ."
+                });
+            }
+
+            return null;
         }
 
         private static AdhesionReadDto ToReadDto(Adhesion entity)

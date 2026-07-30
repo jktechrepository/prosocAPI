@@ -548,7 +548,7 @@ Retourne l'adhésion complète (`AdhesionWithAffilieReadDto`) : affilié, collec
 
 **Espace membre Affilié** : utiliser de préférence `GET /api/Adhesion/mon-adhesion`. L'accès à `GET /api/Adhesion/{id}` est autorisé uniquement si `{id}` appartient à l'affilié connecté ; sinon **403**. Les listes `GET /api/Adhesion`, `paginated` et `advanced` renvoient **403** pour ce rôle.
 
-#### GET /api/Adhesion — liste paginée et paramètre `Search`
+#### GET /api/Adhesion — liste paginée, `Search` et `statutDossier`
 
 Endpoints concernés : `GET /api/Adhesion`, `GET /api/Adhesion/paginated`, `GET /api/Adhesion/en-ligne-sans-gestionnaire`.
 
@@ -562,6 +562,9 @@ Paramètres de pagination communs (`PaginationRequest`) :
 | `SortDirection` | string | `asc` ou `desc` |
 | `Search` | string | Recherche textuelle (max 100 caractères, insensible à la casse) |
 | `Filters` | string (JSON) | Filtres génériques sur les propriétés directes de `Adhesion` |
+| `statutDossier` | string | **Filtre dédié** sur `GET /api/Adhesion` et `GET /api/Adhesion/paginated` : `EN ATTENTE` \| `VALIDÉ` (alias : `VALIDE`, `COMPLET`, `A`, `B`). Invalide → **400**. |
+
+**Scope Agent (AA)** : la liste est **toujours** restreinte à `StatutDossier = EN ATTENTE`, même si `statutDossier=VALIDÉ` est passé en query (le paramètre est ignoré pour ce rôle).
 
 **Comportement de `Search`** : recherche en sous-chaîne (`Contains`) avec logique **OR** sur les champs suivants :
 
@@ -577,16 +580,21 @@ Paramètres de pagination communs (`PaginationRequest`) :
 | `Affilie.EmailAffilie` | `jean@example.cd` |
 | `TypeAdhesion.Libelle` | `F3`, `Solo` |
 
-Exemple :
+Exemples :
 
 ```http
 GET /api/Adhesion?page=1&pageSize=20&Search=mukendi
 Authorization: Bearer {token}
 ```
 
+```http
+GET /api/Adhesion?statutDossier=EN%20ATTENTE&page=1&pageSize=20
+Authorization: Bearer {token}
+```
+
 Réponse : `PaginatedResponse<AdhesionReadDto>` (métadonnées de pagination inchangées).
 
-**Note** : contrairement à `GET /api/Affilie` (projection vers `AffilieReadDto`), la recherche adhésion inclut explicitement les données affilié et type d'adhésion liés. Le paramètre `Filters` (JSON) reste limité aux propriétés scalaires directes de `Adhesion` ; pour des filtres métier typés, utiliser `POST /api/Adhesion/advanced`.
+**Note** : contrairement à `GET /api/Affilie` (projection vers `AffilieReadDto`), la recherche adhésion inclut explicitement les données affilié et type d'adhésion liés. Le paramètre `Filters` (JSON) reste limité aux propriétés scalaires directes de `Adhesion` ; pour des filtres métier typés multi-champs, utiliser `POST /api/Adhesion/advanced`.
 
 | Bloc | Champs notables |
 |------|-----------------|
